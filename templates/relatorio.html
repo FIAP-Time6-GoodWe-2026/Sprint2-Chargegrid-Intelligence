@@ -1,0 +1,1141 @@
+{% extends "base.html" %}
+
+{% block title %}Relatório — {{ sessao.id_sessao }}{% endblock %}
+
+
+{# ======================================================================
+   ESTILOS ESPECÍFICOS DO RELATÓRIO
+   ====================================================================== #}
+{% block extra_css %}
+<style>
+/* ===========================================================
+   OVERRIDE: header verde (sessão concluída)
+   =========================================================== */
+.header {
+    background: linear-gradient(135deg, var(--cor-livre-dark) 0%, #047857 100%);
+}
+
+/* ===========================================================
+   CONTAINER
+   =========================================================== */
+.container {
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 28px 24px 48px;
+}
+
+/* ===========================================================
+   COST-HIGHLIGHT  (dark card sempre, tokens mudam no dark mode)
+   =========================================================== */
+.cost-highlight {
+    background: linear-gradient(135deg,
+        var(--cor-dark-card-1) 0%,
+        var(--cor-dark-card-2) 100%);
+    color: white;
+    border-radius: 16px;
+    padding: 32px;
+    box-shadow: var(--sombra-lg);
+    margin-bottom: 24px;
+    position: relative;
+    overflow: hidden;
+    /* entrada suave */
+    animation: costEnter 0.55s cubic-bezier(0.22,1,0.36,1) both;
+}
+
+@keyframes costEnter {
+    from { opacity: 0; transform: translateY(18px) scale(0.98); }
+    to   { opacity: 1; transform: translateY(0)    scale(1);    }
+}
+
+.cost-highlight::before {
+    content: '';
+    position: absolute;
+    top: -100px; right: -100px;
+    width: 320px; height: 320px;
+    background: radial-gradient(circle, rgba(16,185,129,0.18) 0%, transparent 70%);
+    pointer-events: none;
+}
+
+.cost-grid {
+    display: grid;
+    grid-template-columns: 1fr 1px 1fr;
+    gap: 24px;
+    position: relative;
+}
+
+.cost-main   { display: flex; flex-direction: column; gap: 6px; }
+
+.cost-label {
+    font-size: 0.78rem;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    opacity: 0.65;
+    font-weight: 600;
+}
+
+.cost-value {
+    font-size: 3rem;
+    font-weight: 800;
+    color: var(--cor-livre);
+    line-height: 1;
+}
+.cost-value.peak { color: var(--cor-aviso); }
+
+.cost-subvalue { font-size: 0.82rem; opacity: 0.6; }
+
+.cost-divider { background: rgba(255,255,255,0.12); }
+
+.cost-stats {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: 14px;
+}
+
+.cost-stat-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 0.88rem;
+}
+
+.cost-stat-label {
+    opacity: 0.68;
+    display: flex;
+    align-items: center;
+    gap: 7px;
+}
+.cost-stat-label svg { width: 13px; height: 13px; stroke: currentColor; }
+.cost-stat-value     { font-weight: 600; }
+
+/* ===========================================================
+   CARDS GENÉRICOS
+   =========================================================== */
+.card {
+    background: var(--cor-card);
+    border: 1px solid var(--cor-borda);
+    border-radius: 12px;
+    padding: 24px;
+    box-shadow: var(--sombra-sm);
+    margin-bottom: 20px;
+    /* stagger declarado inline via JS */
+    opacity: 0;
+    animation: cardEnter 0.45s cubic-bezier(0.22,1,0.36,1) both;
+}
+
+.section-title {
+    font-size: 1rem;
+    font-weight: 700;
+    color: var(--cor-texto);
+    margin-bottom: 18px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid var(--cor-borda);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+.section-title svg { width: 17px; height: 17px; stroke: var(--cor-primaria); }
+
+/* ===========================================================
+   INFO GRID
+   =========================================================== */
+.info-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 16px;
+}
+
+.info-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.info-icon {
+    width: 36px;
+    height: 36px;
+    background: var(--cor-fundo);
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    transition: transform 0.2s ease;
+}
+.info-item:hover .info-icon { transform: scale(1.1) rotate(4deg); }
+.info-icon svg { width: 17px; height: 17px; stroke: var(--cor-texto-secundario); }
+
+.info-content { flex: 1; min-width: 0; }
+
+.info-label {
+    font-size: 0.72rem;
+    color: var(--cor-texto-secundario);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    font-weight: 600;
+    margin-bottom: 2px;
+}
+
+.info-value {
+    font-size: 0.92rem;
+    font-weight: 600;
+    color: var(--cor-texto);
+}
+
+/* ===========================================================
+   BADGES
+   =========================================================== */
+.badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    padding: 2px 7px;
+    border-radius: 4px;
+    font-size: 0.72rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+}
+
+.badge-pico {
+    background: #FEE2E2;
+    color: #991B1B;
+}
+[data-theme="dark"] .badge-pico {
+    background: rgba(239,68,68,0.18);
+    color: #FCA5A5;
+}
+
+.badge-normal {
+    background: #D1FAE5;
+    color: #065F46;
+}
+[data-theme="dark"] .badge-normal {
+    background: rgba(16,185,129,0.15);
+    color: #6EE7B7;
+}
+
+.badge-vip {
+    background: #FEF3C7;
+    color: #92400E;
+}
+[data-theme="dark"] .badge-vip {
+    background: rgba(245,158,11,0.15);
+    color: #FCD34D;
+}
+
+/* ===========================================================
+   TARIFA
+   =========================================================== */
+.tarifa-section {
+    background: var(--cor-fundo);
+    border-radius: 10px;
+    padding: 16px;
+    margin-top: 16px;
+}
+
+.tarifa-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 0;
+    font-size: 0.88rem;
+}
+.tarifa-row + .tarifa-row { border-top: 1px solid var(--cor-borda); }
+
+.tarifa-label { color: var(--cor-texto-secundario); }
+.tarifa-value { font-weight: 600; color: var(--cor-texto); }
+
+.tarifa-row-total {
+    border-top: 2px solid var(--cor-borda) !important;
+    padding-top: 12px;
+    margin-top: 4px;
+}
+.tarifa-row-total .tarifa-label { font-weight: 700; color: var(--cor-texto); }
+.tarifa-row-total .tarifa-value  { font-size: 1.05rem; }
+
+.proportional-notice {
+    background: var(--cor-aviso-bg);
+    border-left: 4px solid var(--cor-aviso);
+    border-radius: 8px;
+    padding: 12px 16px;
+    margin-top: 14px;
+    display: flex;
+    gap: 12px;
+    align-items: flex-start;
+}
+.proportional-notice svg {
+    width: 17px; height: 17px;
+    stroke: var(--cor-aviso-dark);
+    flex-shrink: 0;
+    margin-top: 1px;
+}
+.proportional-notice-text {
+    font-size: 0.83rem;
+    color: #78350F;
+    line-height: 1.55;
+}
+[data-theme="dark"] .proportional-notice-text { color: #FCD34D; }
+
+/* ===========================================================
+   TABELA HISTÓRICO
+   =========================================================== */
+.table-wrapper {
+    background: var(--cor-card);
+    border: 1px solid var(--cor-borda);
+    border-radius: 10px;
+    overflow: hidden;
+    margin-top: 8px;
+}
+
+.table-info {
+    font-size: 0.83rem;
+    color: var(--cor-texto-secundario);
+    margin-bottom: 12px;
+    display: flex;
+    align-items: center;
+    gap: 7px;
+}
+.table-info svg { width: 13px; height: 13px; stroke: var(--cor-texto-secundario); flex-shrink: 0; }
+
+.table-container { overflow-x: auto; }
+
+table { width: 100%; border-collapse: collapse; font-size: 0.83rem; }
+
+thead { background: var(--cor-table-header); }
+
+th {
+    padding: 11px 13px;
+    text-align: left;
+    font-weight: 700;
+    color: var(--cor-texto-secundario);
+    font-size: 0.68rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    border-bottom: 1px solid var(--cor-borda);
+}
+
+td {
+    padding: 9px 13px;
+    border-bottom: 1px solid var(--cor-borda);
+    color: var(--cor-texto);
+}
+
+tbody tr:last-child td { border-bottom: none; }
+
+tbody tr.peak { background: var(--cor-table-row-pico); }
+tbody tr.peak td { border-bottom-color: rgba(245,158,11,0.18); }
+
+/* linha de tabela: entrada suave em cascata */
+tbody tr {
+    opacity: 0;
+    animation: rowEnter 0.3s ease both;
+}
+@keyframes rowEnter {
+    from { opacity: 0; transform: translateX(-6px); }
+    to   { opacity: 1; transform: translateX(0); }
+}
+
+.text-center { text-align: center; }
+.text-right  { text-align: right; }
+.text-mono   { font-family: 'SF Mono', Monaco, 'Cascadia Code', monospace; font-size: 0.82rem; }
+
+.peak-dot {
+    display: inline-block;
+    width: 7px; height: 7px;
+    background: var(--cor-aviso-dark);
+    border-radius: 50%;
+    margin-right: 5px;
+    vertical-align: middle;
+}
+.pico-tag {
+    display: inline-flex;
+    align-items: center;
+    font-size: 0.68rem;
+    color: var(--cor-aviso-dark);
+    font-weight: 700;
+    margin-left: 4px;
+}
+
+/* ===========================================================
+   AÇÕES
+   =========================================================== */
+.actions {
+    display: flex;
+    gap: 12px;
+    margin-top: 28px;
+    justify-content: center;
+}
+
+.btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 12px 24px;
+    border-radius: 8px;
+    font-size: 0.92rem;
+    font-weight: 600;
+    text-decoration: none;
+    transition: all 0.2s ease;
+    cursor: pointer;
+    border: none;
+    font-family: inherit;
+    position: relative;
+    overflow: hidden;
+}
+.btn svg { width: 15px; height: 15px; }
+
+.btn-primary {
+    background: var(--cor-primaria);
+    color: white;
+}
+.btn-primary svg { stroke: white; }
+.btn-primary:hover {
+    background: var(--cor-primaria-dark);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 14px rgba(192,0,0,0.3);
+}
+
+.btn-secondary {
+    background: var(--cor-card);
+    color: var(--cor-texto);
+    border: 1.5px solid var(--cor-borda);
+}
+.btn-secondary svg { stroke: var(--cor-texto); }
+.btn-secondary:hover {
+    border-color: var(--cor-texto-secundario);
+    background: var(--cor-fundo);
+}
+
+/* ===========================================================
+   RESPONSIVE
+   =========================================================== */
+@media (max-width: 680px) {
+    .cost-grid {
+        grid-template-columns: 1fr;
+    }
+    .cost-divider { display: none; }
+    .cost-value   { font-size: 2.3rem; }
+    .actions      { flex-direction: column; }
+    .btn          { width: 100%; justify-content: center; }
+}
+
+
+/* ===========================================================
+   BOTÃO PDF
+   =========================================================== */
+.btn-pdf {
+    background: var(--cor-card);
+    color: var(--cor-texto);
+    border: 1.5px solid var(--cor-borda);
+    gap: 8px;
+}
+.btn-pdf svg { stroke: var(--cor-texto-secundario); }
+.btn-pdf:hover {
+    border-color: var(--cor-primaria);
+    color: var(--cor-primaria);
+    background: rgba(192,0,0,0.04);
+}
+.btn-pdf:hover svg { stroke: var(--cor-primaria); }
+.btn-pdf.generating {
+    opacity: 0.7;
+    cursor: not-allowed;
+    pointer-events: none;
+}
+
+/* ===========================================================
+   PRINT — comprovante limpo para impressão / PDF
+   =========================================================== */
+@media print {
+    /* Mostrar/ocultar elementos */
+    .header, .actions, .back-button, .theme-toggle,
+    #cgi-nav-bar, #toastContainer { display: none !important; }
+
+    /* Adiciona cabeçalho de impressão só visível no print */
+    .print-header { display: flex !important; }
+
+    body { background: white !important; color: #000 !important; }
+
+    .cost-highlight {
+        box-shadow: none !important;
+        border: 1.5px solid #111 !important;
+        background: #111827 !important;  /* dark mantido — imprime bem em maioria dos navegadores */
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+    }
+
+    .card {
+        box-shadow: none !important;
+        border: 1px solid #CBD5E1 !important;
+        break-inside: avoid;
+        margin-bottom: 12px !important;
+    }
+
+    /* Garantir que animações não travam elementos em opacity: 0 */
+    .card, tbody tr { opacity: 1 !important; animation: none !important; }
+
+    /* Table: garantir linhas de pico visíveis */
+    tbody tr.peak {
+        background: #FFFBEB !important;
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+    }
+
+    /* Page breaks */
+    #card-historico { break-before: page; }
+    thead { display: table-header-group; }
+
+    @page {
+        margin: 18mm 15mm;
+        size: A4;
+    }
+}
+
+/* Cabeçalho visível só no print (oculto no browser) */
+.print-header {
+    display: none;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 20px;
+    padding-bottom: 12px;
+    border-bottom: 2px solid #1F2937;
+}
+.print-header-brand {
+    display: flex; align-items: center; gap: 10px;
+    font-size: 1rem; font-weight: 800; color: #000;
+}
+.print-header-brand svg { width: 22px; height: 22px; stroke: #C00000; }
+.print-header-meta {
+    font-size: 0.75rem; color: #6B7280; text-align: right; line-height: 1.5;
+}
+</style>
+{% endblock %}
+
+
+{# ======================================================================
+   HEADER VERDE — SESSÃO CONCLUÍDA
+   ====================================================================== #}
+{% block header %}
+<header class="header">
+    <div class="header-content">
+        <a href="{{ url_for('mapa') }}" class="back-button" title="Voltar ao mapa">
+            <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/>
+            </svg>
+        </a>
+
+        <div class="header-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
+                <polyline points="22 4 12 14.01 9 11.01"/>
+            </svg>
+        </div>
+
+        <div class="header-info">
+            <h1>Sessão Concluída</h1>
+            <div class="header-subtitle">{{ sessao.id_sessao }}</div>
+        </div>
+
+        <button class="theme-toggle" title="Alternar tema" aria-label="Alternar tema">
+            <svg class="icon-sun" viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="12" r="5"/>
+                <line x1="12" y1="1"  x2="12" y2="3"/>    <line x1="12" y1="21" x2="12" y2="23"/>
+                <line x1="4.22" y1="4.22"  x2="5.64"  y2="5.64"/>
+                <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/>
+                <line x1="1"  y1="12" x2="3"  y2="12"/>   <line x1="21" y1="12" x2="23" y2="12"/>
+                <line x1="4.22"  y1="19.78" x2="5.64"  y2="18.36"/>
+                <line x1="18.36" y1="5.64"  x2="19.78" y2="4.22"/>
+            </svg>
+            <svg class="icon-moon" viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+            </svg>
+        </button>
+    </div>
+</header>
+{% endblock %}
+
+
+{# ======================================================================
+   CONTEÚDO PRINCIPAL
+   ====================================================================== #}
+{% block content %}
+{# Cabeçalho visível apenas no print/PDF (oculto no browser via CSS) #}
+<div class="print-header">
+    <div class="print-header-brand">
+        <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>
+        </svg>
+        ChargeGrid Intelligence
+    </div>
+    <div class="print-header-meta">
+        Comprovante de Recarga<br>
+        {{ sessao.id_sessao }} · {{ sessao.timestamp }}
+    </div>
+</div>
+
+{# ── Banner fixo de aviso de pico ─────────────────────────────────── #}
+{# (removido: agora exibido como toast com duração longa no JS abaixo) #}
+
+<div class="container" id="mainContainer">
+
+    {# ── FLASH BRIDGE (mensagens do Flask → toast JS) ── #}
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            {% for category, message in messages %}
+                <div id="cgi-flash-bridge" data-type="{{ category }}" data-msg="{{ message }}" style="display:none"></div>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+
+    {# ── BLOCO SPRINT 2 — no topo, antes do custo, para visibilidade imediata #}
+    {% if sessao.session_id_s2 %}
+    <div style="margin-bottom:20px;">
+        {# Alerta de throttle — destaque máximo quando potência foi redistribuída #}
+        {% if sessao.throttle_msg %}
+        <div style="background:rgba(245,158,11,0.1);border:1px solid rgba(245,158,11,0.4);border-radius:10px;padding:14px 16px;margin-bottom:14px;display:flex;align-items:flex-start;gap:12px;font-size:0.85rem;color:var(--cor-texto);">
+            <svg viewBox="0 0 24 24" fill="none" stroke="#D97706" stroke-width="2" width="22" height="22" stroke-linecap="round" style="flex-shrink:0;margin-top:1px;"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+            <div>
+                <strong style="display:block;margin-bottom:3px;">⚡ Controle dinâmico de carga aplicado</strong>
+                {{ sessao.throttle_msg }}
+            </div>
+        </div>
+        {% endif %}
+
+        <div class="section-title" style="margin-bottom:12px;">
+            <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/>
+            </svg>
+            ChargeGrid Intelligence · Sprint 2
+        </div>
+
+        <div class="info-grid">
+            <div class="info-card">
+                <div class="info-label">ID Sessão S2</div>
+                <div class="info-value" style="font-family:monospace;font-size:0.82rem;">{{ sessao.session_id_s2 }}</div>
+            </div>
+            <div class="info-card">
+                <div class="info-label">Veículo</div>
+                <div class="info-value">{{ sessao.vehicle_id if sessao.vehicle_id else '—' }}</div>
+            </div>
+            <div class="info-card">
+                <div class="info-label">Tipo de Usuário</div>
+                <div class="info-value">
+                    {{ sessao.tipo_usuario_nome | tipo_pt }}
+                    {% if sessao.tipo_usuario == 'A' %}
+                    <span class="badge badge-vip" style="margin-left:6px;">−15%</span>
+                    {% elif sessao.tipo_usuario == 'C' %}
+                    <span class="badge badge-vip" style="margin-left:6px;">−10%</span>
+                    {% endif %}
+                </div>
+            </div>
+            <div class="info-card">
+                <div class="info-label">Potência Alocada</div>
+                <div class="info-value">
+                    {{ "%.1f"|format(sessao.potencia_alocada) }} kW
+                    {% if sessao.potencia_alocada < 11.0 %}
+                    <span style="font-size:0.75rem;color:var(--cor-aviso);margin-left:4px;">(throttled)</span>
+                    {% endif %}
+                </div>
+            </div>
+            <div class="info-card" style="grid-column:span 2;">
+                <div class="info-label">Tarifa Dinâmica Aplicada</div>
+                <div class="info-value" style="font-size:0.88rem;">{{ sessao.tarifa_label }}</div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    {# ================================================================
+       BLOCO DE CUSTO — dark card com gradiente
+       ================================================================ #}
+    <div class="cost-highlight">
+        <div class="cost-grid">
+
+            <div class="cost-main">
+                <div class="cost-label">Total Cobrado</div>
+                <div class="cost-value {% if sessao.sessao_cruza_pico %}peak{% endif %}">
+                    R$&nbsp;{{ "%.2f"|format(sessao.custo_final)|replace('.', ',') }}
+                </div>
+                {% if sessao.taxa_minima_aplicada %}
+                    <div class="cost-subvalue">Taxa mínima aplicada</div>
+                {% else %}
+                    <div class="cost-subvalue">
+                        {{ sessao.duracao_min }} min de recarga
+                        · {{ "%.2f"|format(sessao.energia_kwh)|replace('.', ',') }} kWh
+                    </div>
+                {% endif %}
+            </div>
+
+            <div class="cost-divider"></div>
+
+            <div class="cost-stats">
+                <div class="cost-stat-row">
+                    <span class="cost-stat-label">
+                        <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>
+                        </svg>
+                        Energia consumida
+                    </span>
+                    <span class="cost-stat-value">
+                        {{ "%.2f"|format(sessao.energia_kwh)|replace('.', ',') }} kWh
+                    </span>
+                </div>
+                <div class="cost-stat-row">
+                    <span class="cost-stat-label">
+                        <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <line x1="12" y1="1" x2="12" y2="23"/>
+                            <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
+                        </svg>
+                        Tarifa média
+                    </span>
+                    <span class="cost-stat-value">
+                        R$ {{ "%.2f"|format(sessao.tarifa_kwh)|replace('.', ',') }}/kWh
+                    </span>
+                </div>
+                <div class="cost-stat-row">
+                    <span class="cost-stat-label">
+                        <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <circle cx="12" cy="12" r="10"/>
+                            <polyline points="12 6 12 12 16 14"/>
+                        </svg>
+                        Período
+                    </span>
+                    <span class="cost-stat-value">
+                        {{ sessao.hora_inicio_str }} – {{ sessao.hora_fim_str }}
+                    </span>
+                </div>
+            </div>
+
+        </div>
+    </div>{# /cost-highlight #}
+
+
+    {# ================================================================
+       POSTO E CARREGADOR
+       ================================================================ #}
+    <div class="card">
+        <div class="section-title">
+            <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/>
+                <circle cx="12" cy="10" r="3"/>
+            </svg>
+            Posto e Carregador
+        </div>
+
+        <div class="info-grid">
+            <div class="info-item">
+                <div class="info-icon">
+                    <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
+                        <polyline points="9 22 9 12 15 12 15 22"/>
+                    </svg>
+                </div>
+                <div class="info-content">
+                    <div class="info-label">Posto</div>
+                    <div class="info-value">{{ posto.nome }}</div>
+                </div>
+            </div>
+
+            <div class="info-item">
+                <div class="info-icon">
+                    <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <rect x="2" y="3" width="20" height="14" rx="2" ry="2"/>
+                        <line x1="8" y1="21" x2="16" y2="21"/>
+                        <line x1="12" y1="17" x2="12" y2="21"/>
+                    </svg>
+                </div>
+                <div class="info-content">
+                    <div class="info-label">Carregador</div>
+                    <div class="info-value">{{ carregador.nome }}</div>
+                </div>
+            </div>
+
+            <div class="info-item">
+                <div class="info-icon">
+                    <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>
+                    </svg>
+                </div>
+                <div class="info-content">
+                    <div class="info-label">Modelo</div>
+                    <div class="info-value">GoodWe GW11K · 11 kW</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+
+    {# ================================================================
+       INFORMAÇÕES DA SESSÃO
+       ================================================================ #}
+    <div class="card">
+        <div class="section-title">
+            <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                <polyline points="14 2 14 8 20 8"/>
+            </svg>
+            Informações da Sessão
+        </div>
+
+        <div class="info-grid">
+            <div class="info-item">
+                <div class="info-icon">
+                    <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+                        <circle cx="12" cy="7" r="4"/>
+                    </svg>
+                </div>
+                <div class="info-content">
+                    <div class="info-label">Usuário</div>
+                    <div class="info-value">{{ sessao.nome_usuario }}</div>
+                </div>
+            </div>
+
+            <div class="info-item">
+                <div class="info-icon">
+                    <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+                    </svg>
+                </div>
+                <div class="info-content">
+                    <div class="info-label">Plano</div>
+                    <div class="info-value">
+                        {% if sessao.tipo_usuario == 'A' %}
+                            Assinante <span class="badge badge-vip">-{{ sessao.desconto_assinante_pct }}%</span>
+                        {% else %}
+                            Padrão
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+
+            <div class="info-item">
+                <div class="info-icon">
+                    <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="12" cy="12" r="10"/>
+                        <polyline points="12 6 12 12 16 14"/>
+                    </svg>
+                </div>
+                <div class="info-content">
+                    <div class="info-label">Início</div>
+                    <div class="info-value">{{ sessao.hora_inicio_str }}</div>
+                </div>
+            </div>
+
+            <div class="info-item">
+                <div class="info-icon">
+                    <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="12" cy="12" r="10"/>
+                        <polyline points="12 6 12 12 16 14"/>
+                    </svg>
+                </div>
+                <div class="info-content">
+                    <div class="info-label">Término</div>
+                    <div class="info-value">{{ sessao.hora_fim_str }}</div>
+                </div>
+            </div>
+
+            <div class="info-item">
+                <div class="info-icon">
+                    <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="12" cy="12" r="10"/>
+                        <path d="M12 6v6l4 2"/>
+                    </svg>
+                </div>
+                <div class="info-content">
+                    <div class="info-label">Duração</div>
+                    <div class="info-value">{{ sessao.duracao_min }} minutos</div>
+                </div>
+            </div>
+
+            <div class="info-item">
+                <div class="info-icon">
+                    <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
+                        <line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/>
+                        <line x1="3" y1="10" x2="21" y2="10"/>
+                    </svg>
+                </div>
+                <div class="info-content">
+                    <div class="info-label">Data / Hora</div>
+                    <div class="info-value">{{ sessao.timestamp }}</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+
+    {# ================================================================
+       DETALHAMENTO DE TARIFA
+       ================================================================ #}
+    <div class="card">
+        <div class="section-title">
+            <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <line x1="12" y1="1" x2="12" y2="23"/>
+                <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
+            </svg>
+            Detalhamento de Tarifa
+        </div>
+
+        <div class="tarifa-section">
+            <div class="tarifa-row">
+                <span class="tarifa-label">Tarifa base</span>
+                <span class="tarifa-value">R$ 1,20/kWh</span>
+            </div>
+
+            {% if sessao.sessao_cruza_pico %}
+            <div class="tarifa-row">
+                <span class="tarifa-label">
+                    Horário de pico (+50%)
+                    <span class="badge badge-pico" style="margin-left:6px">{{ sessao.minutos_em_pico }} min em pico</span>
+                </span>
+                <span class="tarifa-value">R$ 1,80/kWh</span>
+            </div>
+            {% endif %}
+
+            {% if sessao.tipo_usuario == 'A' %}
+            <div class="tarifa-row">
+                <span class="tarifa-label">Desconto assinante</span>
+                <span class="tarifa-value" style="color: var(--cor-livre-dark);">
+                    -{{ sessao.desconto_assinante_pct }}%
+                </span>
+            </div>
+            {% endif %}
+
+            <div class="tarifa-row">
+                <span class="tarifa-label">Tarifa média aplicada</span>
+                <span class="tarifa-value">
+                    R$ {{ "%.4f"|format(sessao.tarifa_kwh)|replace('.', ',') }}/kWh
+                </span>
+            </div>
+
+            {% if sessao.taxa_minima_aplicada %}
+            <div class="tarifa-row">
+                <span class="tarifa-label">Taxa mínima de sessão</span>
+                <span class="tarifa-value" style="color: var(--cor-aviso-dark);">
+                    R$ {{ "%.2f"|format(sessao.taxa_minima)|replace('.', ',') }} aplicada
+                </span>
+            </div>
+            {% endif %}
+
+            <div class="tarifa-row tarifa-row-total">
+                <span class="tarifa-label">Total cobrado</span>
+                <span class="tarifa-value">
+                    R$ {{ "%.2f"|format(sessao.custo_final)|replace('.', ',') }}
+                </span>
+            </div>
+        </div>
+
+        {% if sessao.sessao_cruza_pico %}
+        <div class="proportional-notice">
+            <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="12" r="10"/>
+                <line x1="12" y1="16" x2="12" y2="12"/>
+                <line x1="12" y1="8"  x2="12.01" y2="8"/>
+            </svg>
+            <div class="proportional-notice-text">
+                <strong>Tarifação proporcional:</strong> A tarifa de pico (+50%) foi aplicada apenas nos
+                <strong>{{ sessao.minutos_em_pico }} minutos</strong> da sessão que estavam dentro do
+                horário de pico (18:00–22:59). Os demais
+                {{ sessao.duracao_min - sessao.minutos_em_pico }} minutos foram cobrados com tarifa normal.
+            </div>
+        </div>
+        {% endif %}
+    </div>
+
+
+    {# ================================================================
+       HISTÓRICO DETALHADO (tabela com animação em cascata)
+       ================================================================ #}
+    <div class="card" id="card-historico">
+        <div class="section-title">
+            <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <line x1="3" y1="6"  x2="21" y2="6"/>
+                <line x1="3" y1="12" x2="21" y2="12"/>
+                <line x1="3" y1="18" x2="21" y2="18"/>
+            </svg>
+            Histórico Detalhado
+        </div>
+
+        <div class="table-info">
+            <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="12" r="10"/>
+                <line x1="12" y1="16" x2="12" y2="12"/>
+                <line x1="12" y1="8"  x2="12.01" y2="8"/>
+            </svg>
+            Progressão da recarga em intervalos de 5 minutos.
+            Linhas com fundo amarelo indicam intervalos cobrados com tarifa de pico.
+        </div>
+
+        <div class="table-wrapper">
+            <div class="table-container">
+                <table id="tbl-historico">
+                    <thead>
+                        <tr>
+                            <th class="text-center">Min</th>
+                            <th class="text-center">Horário</th>
+                            <th class="text-right">Tarifa</th>
+                            <th class="text-right">Energia</th>
+                            <th class="text-right">Total kWh</th>
+                            <th class="text-right">Custo Total</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for tick in sessao.log_ticks %}
+                        <tr {% if tick.em_pico %}class="peak"{% endif %}>
+                            <td class="text-center text-mono">{{ tick.minuto }}</td>
+                            <td class="text-center text-mono">
+                                {% if tick.em_pico %}<span class="peak-dot"></span>{% endif %}
+                                {{ tick.hora_tick }}
+                            </td>
+                            <td class="text-right text-mono">
+                                R$ {{ "%.4f"|format(tick.tarifa_tick)|replace('.', ',') }}
+                                {% if tick.em_pico %}<span class="pico-tag">+50%</span>{% endif %}
+                            </td>
+                            <td class="text-right text-mono">
+                                {{ "%.4f"|format(tick.energia_tick_kwh)|replace('.', ',') }}
+                            </td>
+                            <td class="text-right text-mono">
+                                {{ "%.4f"|format(tick.energia_total_kwh)|replace('.', ',') }}
+                            </td>
+                            <td class="text-right text-mono">
+                                <strong>R$ {{ "%.2f"|format(tick.custo_total)|replace('.', ',') }}</strong>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+
+    {# ================================================================
+       AÇÕES
+       ================================================================ #}
+    <div class="actions">
+        <a href="{{ url_for('mapa') }}" class="btn btn-secondary">
+            <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/>
+                <circle cx="12" cy="10" r="3"/>
+            </svg>
+            Voltar ao Mapa
+        </a>
+        <button class="btn btn-pdf" id="btnPdf">
+            <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                <polyline points="14 2 14 8 20 8"/>
+                <line x1="12" y1="18" x2="12" y2="12"/>
+                <line x1="9"  y1="15" x2="15" y2="15"/>
+            </svg>
+            Baixar Comprovante
+        </button>
+        <a href="{{ url_for('posto', posto_id=posto.id) }}" class="btn btn-primary">
+            <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>
+            </svg>
+            Nova Sessão
+        </a>
+    </div>
+
+</div>{# /container #}
+{% endblock %}
+
+
+{# ======================================================================
+   SCRIPTS — animações de stagger nos cards e nas linhas da tabela
+   ====================================================================== #}
+{% block scripts %}
+<script>
+(function () {
+
+    /* ── Stagger nos cards ──────────────────────────────────────── */
+    document.querySelectorAll('.card').forEach(function (card, i) {
+        card.style.animationDelay = (0.08 + i * 0.10) + 's';
+    });
+
+    /* ── Stagger nas linhas da tabela (máx. 40 linhas animadas) ── */
+    var rows      = document.querySelectorAll('#tbl-historico tbody tr');
+    var BASE_DELAY = 0.55;
+    var MAX_ROWS   = 40;
+
+    rows.forEach(function (row, i) {
+        if (i < MAX_ROWS) {
+            row.style.animationDelay = (BASE_DELAY + i * 0.025) + 's';
+        } else {
+            row.style.animationDelay = BASE_DELAY + MAX_ROWS * 0.025 + 's';
+        }
+    });
+
+    /* ── PDF via window.print() ─────────────────────────────────── */
+    var btnPdf = document.getElementById('btnPdf');
+
+    var SVG_DOWNLOAD =
+        '<svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' +
+        '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>' +
+        '<polyline points="14 2 14 8 20 8"/>' +
+        '<line x1="12" y1="18" x2="12" y2="12"/>' +
+        '<line x1="9"  y1="15" x2="15" y2="15"/></svg>' +
+        ' Baixar Comprovante';
+
+    var SVG_SPIN =
+        '<svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"' +
+        ' style="width:15px;height:15px;animation:spin 1s linear infinite;stroke:currentColor">' +
+        '<line x1="12" y1="2"    x2="12"   y2="6"/>'   +
+        '<line x1="12" y1="18"   x2="12"   y2="22"/>'  +
+        '<line x1="4.93"  y1="4.93"  x2="7.76"  y2="7.76"/>'  +
+        '<line x1="16.24" y1="16.24" x2="19.07" y2="19.07"/>' +
+        '<line x1="2"  y1="12"   x2="6"    y2="12"/>'  +
+        '<line x1="18" y1="12"   x2="22"   y2="12"/>'  +
+        '<line x1="4.93"  y1="19.07" x2="7.76"  y2="16.24"/>' +
+        '<line x1="16.24" y1="7.76"  x2="19.07" y2="4.93"/>'  +
+        '</svg> Preparando...';
+
+    if (btnPdf) {
+        btnPdf.addEventListener('click', function () {
+            if (btnPdf.classList.contains('generating')) return;
+
+            document.querySelectorAll('.card, tbody tr').forEach(function (el) {
+                el.style.opacity   = '1';
+                el.style.animation = 'none';
+            });
+
+            btnPdf.classList.add('generating');
+            btnPdf.innerHTML = SVG_SPIN;
+
+            requestAnimationFrame(function () {
+                requestAnimationFrame(function () {
+                    window.print();
+                    btnPdf.classList.remove('generating');
+                    btnPdf.innerHTML = SVG_DOWNLOAD;
+                });
+            });
+        });
+    }
+
+    /* ── Toast de conclusão (duração longa para o usuário ter tempo de ler) ── */
+    var sistema = window.ChargeGrid && window.ChargeGrid.ToastSystem;
+    if (sistema) {
+        var isPico = {{ 'true' if sessao.sessao_cruza_pico else 'false' }};
+        setTimeout(function () {
+            if (isPico) {
+                sistema.show(
+                    '<strong>Sessão com horário de pico.</strong> Tarifa +50% aplicada ' +
+                    'proporcionalmente nos <strong>{{ sessao.minutos_em_pico }} min</strong> ' +
+                    'dentro do período de pico (18:00–22:59).',
+                    'warning',
+                    12000
+                );
+            } else {
+                sistema.show(
+                    'Sessão concluída com tarifa normal. ✓',
+                    'success',
+                    12000
+                );
+            }
+        }, 600);
+    }
+
+})();
+</script>
+{% endblock %}

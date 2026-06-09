@@ -1,0 +1,332 @@
+{% extends "base.html" %}
+{% block title %}Relatório Consolidado — ChargeGrid Intelligence{% endblock %}
+
+{% block extra_css %}
+<style>
+.container { max-width: 1100px; margin: 0 auto; padding: 24px; }
+
+.page-title {
+    font-size: 1.4rem; font-weight: 700; color: var(--cor-texto);
+    margin-bottom: 4px;
+}
+.page-sub {
+    font-size: 0.85rem; color: var(--cor-texto-secundario); margin-bottom: 24px;
+}
+
+/* ── TOTALIZADORES ── */
+.totals-grid {
+    display: grid;
+    grid-template-columns: repeat(6, 1fr);
+    gap: 14px;
+    margin-bottom: 24px;
+}
+.total-card {
+    background: var(--cor-card);
+    border-radius: 12px;
+    border: 1px solid var(--cor-borda);
+    padding: 16px;
+    box-shadow: var(--sombra-sm);
+    text-align: center;
+}
+.total-val {
+    font-size: 1.5rem; font-weight: 700; color: var(--cor-texto);
+    line-height: 1.1;
+}
+.total-val.accent { color: var(--cor-primaria); }
+.total-lbl {
+    font-size: 0.72rem; color: var(--cor-texto-secundario);
+    text-transform: uppercase; letter-spacing: 0.05em;
+    margin-top: 4px;
+}
+
+/* ── TABELA PRINCIPAL ── */
+.report-card {
+    background: var(--cor-card);
+    border-radius: 14px;
+    border: 1px solid var(--cor-borda);
+    box-shadow: var(--sombra-sm);
+    overflow: hidden;
+    margin-bottom: 24px;
+}
+.report-card-header {
+    padding: 16px 20px;
+    border-bottom: 1px solid var(--cor-borda);
+    font-size: 0.9rem; font-weight: 700;
+    color: var(--cor-texto);
+    display: flex; align-items: center; gap: 8px;
+}
+.report-card-header svg { width: 16px; height: 16px; stroke: var(--cor-primaria); fill: none; }
+
+.report-table { width: 100%; border-collapse: collapse; font-size: 0.82rem; }
+.report-table th {
+    text-align: left; padding: 10px 14px;
+    background: var(--cor-table-header);
+    color: var(--cor-texto-secundario);
+    font-size: 0.72rem; text-transform: uppercase;
+    letter-spacing: 0.04em;
+    border-bottom: 1px solid var(--cor-borda);
+    white-space: nowrap;
+}
+.report-table td {
+    padding: 12px 14px;
+    border-bottom: 1px solid var(--cor-borda);
+    color: var(--cor-texto); vertical-align: middle;
+}
+.report-table tr:last-child td { border-bottom: none; }
+.report-table tr:hover td { background: var(--cor-fundo); }
+
+.status-badge {
+    display: inline-flex; align-items: center; gap: 5px;
+    font-size: 0.7rem; font-weight: 600;
+    padding: 3px 9px; border-radius: 99px;
+    text-transform: uppercase; letter-spacing: 0.04em;
+}
+.status-CHARGING  { background: #D1FAE5; color: #065F46; }
+.status-THROTTLED { background: #FEF3C7; color: #92400E; }
+.status-FINISHED  { background: #EFF6FF; color: #1E40AF; }
+.status-FAULTED   { background: #FEE2E2; color: #991B1B; }
+.status-WAITING   { background: var(--cor-fundo); color: var(--cor-texto-secundario); }
+[data-theme="dark"] .status-CHARGING  { background: rgba(16,185,129,0.2); color: #34D399; }
+[data-theme="dark"] .status-THROTTLED { background: rgba(245,158,11,0.2); color: #FCD34D; }
+[data-theme="dark"] .status-FINISHED  { background: rgba(37,99,235,0.2);  color: #93C5FD; }
+[data-theme="dark"] .status-FAULTED   { background: rgba(239,68,68,0.2);  color: #FCA5A5; }
+
+.type-badge {
+    font-size: 0.68rem; font-weight: 700;
+    padding: 2px 7px; border-radius: 99px;
+    background: var(--cor-fundo); color: var(--cor-texto-secundario);
+    border: 1px solid var(--cor-borda);
+}
+
+/* ── REGISTRADORES MODBUS ── */
+.reg-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 10px;
+    padding: 16px 20px;
+}
+.reg-item {
+    background: var(--cor-fundo);
+    border-radius: 8px;
+    padding: 10px 12px;
+    border: 1px solid var(--cor-borda);
+    font-family: 'SF Mono', 'Fira Code', monospace;
+    font-size: 0.78rem;
+}
+.reg-addr { color: var(--cor-texto-secundario); font-size: 0.7rem; margin-bottom: 3px; }
+.reg-name { color: var(--cor-texto); font-weight: 600; margin-bottom: 2px; }
+.reg-val  { color: var(--cor-primaria); font-weight: 700; }
+
+/* ── BOTÕES ── */
+.btn-back {
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 9px 18px;
+    background: var(--cor-card);
+    border: 1px solid var(--cor-borda);
+    border-radius: 9px;
+    color: var(--cor-texto);
+    text-decoration: none;
+    font-size: 0.85rem; font-weight: 600;
+    margin-bottom: 20px;
+    transition: border-color 0.2s, box-shadow 0.2s;
+}
+.btn-back:hover { border-color: var(--cor-primaria); box-shadow: 0 0 0 3px rgba(192,0,0,0.08); }
+.btn-back svg { width: 16px; height: 16px; stroke: currentColor; fill: none; }
+
+@media (max-width: 900px) {
+    .totals-grid { grid-template-columns: repeat(3, 1fr); }
+}
+@media (max-width: 600px) {
+    .totals-grid { grid-template-columns: repeat(2, 1fr); }
+}
+</style>
+{% endblock %}
+
+{% block header %}
+<header class="header">
+    <div class="header-content">
+        <div class="header-brand">
+            <a href="{{ url_for('dashboard') }}" class="brand-icon" title="Dashboard">
+                <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/>
+                </svg>
+            </a>
+            <div>
+                <h1>Relatório Consolidado</h1>
+                <div class="header-subtitle">ChargeGrid Intelligence · Sprint 2</div>
+            </div>
+        </div>
+        <button class="theme-toggle" aria-label="Alternar tema">
+            <svg class="icon-sun" viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+            <svg class="icon-moon" viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+        </button>
+    </div>
+</header>
+{% endblock %}
+
+{% block content %}
+<main class="container">
+    <a href="{{ url_for('dashboard') }}" class="btn-back">
+        <svg viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg>
+        Voltar ao Dashboard
+    </a>
+
+    <h2 class="page-title">Relatório de Sessões</h2>
+    <p class="page-sub">Todas as sessões registradas nesta operação · GoodWe GW11K-HCA-20</p>
+
+    <!-- ── TOTALIZADORES ── -->
+    <div class="totals-grid">
+        <div class="total-card">
+            <div class="total-val">{{ totais.sessoes }}</div>
+            <div class="total-lbl">Sessões</div>
+        </div>
+        <div class="total-card">
+            <div class="total-val {% if totais.ativas > 0 %}accent{% endif %}">{{ totais.ativas }}</div>
+            <div class="total-lbl">Ativas agora</div>
+        </div>
+        <div class="total-card">
+            <div class="total-val">{{ "%.3f"|format(totais.energia) }}</div>
+            <div class="total-lbl">kWh total</div>
+        </div>
+        <div class="total-card">
+            <div class="total-val accent">R$ {{ "%.2f"|format(totais.receita) }}</div>
+            <div class="total-lbl">Receita total</div>
+            <div class="total-lbl" style="margin-top:4px;font-size:0.7rem;opacity:0.8;">
+                Realizada R$ {{ "%.2f"|format(totais.receita_realizada) }}
+                · Projetada R$ {{ "%.2f"|format(totais.receita_projetada) }}
+            </div>
+        </div>
+        <div class="total-card">
+            <div class="total-val">{{ totais.frames }}</div>
+            <div class="total-lbl">Frames Modbus</div>
+        </div>
+        <div class="total-card">
+            <div class="total-val">{{ totais.decisoes }}</div>
+            <div class="total-lbl">Decisões potência</div>
+        </div>
+    </div>
+
+    <!-- ── TABELA DE SESSÕES ── -->
+    <div class="report-card">
+        <div class="report-card-header">
+            <svg viewBox="0 0 24 24"><rect x="1" y="3" width="15" height="13" rx="2"/><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>
+            Sessões de Recarga
+        </div>
+        {% if sessoes %}
+        <div style="overflow-x:auto;">
+        <table class="report-table">
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Carregador</th>
+                    <th>Usuário</th>
+                    <th>Veículo</th>
+                    <th>Status</th>
+                    <th>Potência</th>
+                    <th>Energia</th>
+                    <th>Tarifa</th>
+                    <th>Custo</th>
+                    <th>Duração</th>
+                </tr>
+            </thead>
+            <tbody>
+            {% for s in sessoes %}
+            {% set d = s.to_report_dict() %}
+            <tr data-session-id="{{ d.session_id }}">
+                <td><code style="font-size:0.7rem;">{{ d.session_id }}</code></td>
+                <td>{{ d.charger_id }}</td>
+                <td>
+                    {{ d.user_name }}
+                    <span class="type-badge">{{ d.user_type | tipo_pt }}</span>
+                </td>
+                <td>{{ d.vehicle_id }}</td>
+                <td>
+                    <span class="status-badge status-{{ d.status }}">
+                        {{ d.status }}
+                    </span>
+                </td>
+                <td class="rep-kw">{{ "%.1f"|format(d.allocated_power_kw) }} kW</td>
+                <td class="rep-energy">{{ "%.3f"|format(d.energy_kwh) }} kWh</td>
+                <td>R$ {{ "%.4f"|format(d.tariff_kwh) }}</td>
+                <td class="rep-cost"><strong>R$ {{ "%.2f"|format(d.total_cost_brl) }}</strong></td>
+                <td class="rep-min">{{ d.duration_min }} min</td>
+            </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+        </div>
+        {% else %}
+        <div style="padding:32px;text-align:center;color:var(--cor-texto-secundario);">
+            Nenhuma sessão registrada.
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- ── SNAPSHOT DE REGISTRADORES MODBUS ── -->
+    {% if reg_snapshot %}
+    <div class="report-card">
+        <div class="report-card-header">
+            <svg viewBox="0 0 24 24"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+            Estado dos Registradores Modbus (GW11K-HCA-20)
+        </div>
+        <div class="reg-grid">
+            {% set reg_names = {
+                10017: "Charging Status",
+                10015: "Charging Power",
+                10016: "Session Energy",
+                10029: "Max Power Limit",
+                10025: "Dyn Load Mgmt",
+                10060: "Charge Control",
+                10026: "Breaker Current"
+            } %}
+            {% for addr, val in reg_snapshot.items() %}
+            <div class="reg-item">
+                <div class="reg-addr">Reg {{ addr }}</div>
+                <div class="reg-name">{{ reg_names.get(addr, "Reserved") }}</div>
+                <div class="reg-val">0x{{ "%04X"|format(val) }}</div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+
+</main>
+{% endblock %}
+
+{% block scripts %}
+<script>
+/* Atualização em tempo real das sessões ativas no relatório (sem F5).
+   Só atualiza linhas de sessões que ainda estão ativas — as encerradas têm
+   valores finais e não mudam. */
+(function () {
+    var INTERVAL = 2000;
+
+    function atualizar() {
+        fetch('/api/status')
+            .then(function (r) { return r.json(); })
+            .then(function (data) {
+                (data.sessoes_ativas || []).forEach(function (s) {
+                    var row = document.querySelector(
+                        'tr[data-session-id="' + s.session_id + '"]');
+                    if (!row) return;
+
+                    var kw = row.querySelector('.rep-kw');
+                    if (kw) kw.textContent = s.allocated_kw.toFixed(1) + ' kW';
+
+                    var en = row.querySelector('.rep-energy');
+                    if (en) en.textContent = s.energy_kwh.toFixed(3) + ' kWh';
+
+                    var co = row.querySelector('.rep-cost');
+                    if (co) co.innerHTML = '<strong>R$ ' + s.cost_brl.toFixed(2) + '</strong>';
+
+                    var mi = row.querySelector('.rep-min');
+                    if (mi) mi.textContent = s.duration_min.toFixed(1) + ' min';
+                });
+            })
+            .catch(function (e) { console.warn('Polling relatório:', e); });
+    }
+
+    setInterval(atualizar, INTERVAL);
+}());
+</script>
+{% endblock %}

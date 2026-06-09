@@ -1,0 +1,756 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}ChargeGrid Intelligence{% endblock %}</title>
+
+    <!--
+        FOUC PREVENTION — executa inline antes de qualquer CSS ser renderizado.
+        Lê a preferência salva e aplica o data-theme na raiz imediatamente,
+        eliminando o flash branco/escuro ao carregar a página.
+    -->
+    <script>
+        (function () {
+            var t = localStorage.getItem('cgi-theme') || 'light';
+            document.documentElement.setAttribute('data-theme', t);
+        })();
+    </script>
+
+    <style>
+    /* ====================================================================
+       DESIGN TOKENS — Variáveis CSS (Light mode padrão)
+       ==================================================================== */
+    :root {
+        --cor-primaria:          #C00000;
+        --cor-primaria-dark:     #8B0000;
+        --cor-fundo:             #F3F4F6;
+        --cor-card:              #FFFFFF;
+        --cor-input-bg:          #FFFFFF;
+        --cor-dark-card-1:       #1F2937;
+        --cor-dark-card-2:       #111827;
+        --cor-texto:             #1F2937;
+        --cor-texto-secundario:  #6B7280;
+        --cor-borda:             #E5E7EB;
+        --cor-input-border:      #E5E7EB;
+        --cor-livre:             #10B981;
+        --cor-livre-dark:        #059669;
+        --cor-ocupado:           #EF4444;
+        --cor-vip:               #F59E0B;
+        --cor-vip-dark:          #D97706;
+        --cor-vip-bg:            #FFFBEB;
+        --cor-aviso:             #F59E0B;
+        --cor-aviso-dark:        #D97706;
+        --cor-aviso-bg:          #FEF3C7;
+        --cor-info:              #2563EB;
+        --cor-info-bg:           #EFF6FF;
+        --cor-mapa-bg:           #E8EEF2;
+        --cor-mapa-bg2:          #D9E3EA;
+        --cor-mapa-water:        #C8DCE6;
+        --cor-mapa-park:         #C8E6C9;
+        --cor-mapa-road:         rgba(255,255,255,0.75);
+        --cor-mapa-road-minor:   rgba(255,255,255,0.40);
+        --cor-table-header:      #F9FAFB;
+        --cor-table-row-pico:    #FFFBEB;
+        --sombra-sm:  0 1px 2px rgba(0,0,0,0.05);
+        --sombra-md:  0 4px 6px rgba(0,0,0,0.10);
+        --sombra-lg:  0 10px 25px rgba(0,0,0,0.15);
+    }
+
+    /* ====================================================================
+       DARK MODE — Sobreposição completa de tokens
+       ==================================================================== */
+    [data-theme="dark"] {
+        --cor-fundo:             #0F172A;
+        --cor-card:              #1E293B;
+        --cor-input-bg:          #1E293B;
+        --cor-dark-card-1:       #020617;
+        --cor-dark-card-2:       #000308;
+        --cor-texto:             #F1F5F9;
+        --cor-texto-secundario:  #94A3B8;
+        --cor-borda:             #334155;
+        --cor-input-border:      #475569;
+        --cor-livre:             #34D399;
+        --cor-livre-dark:        #10B981;
+        --cor-vip-bg:            rgba(245,158,11,0.12);
+        --cor-aviso-bg:          rgba(245,158,11,0.12);
+        --cor-info-bg:           rgba(37,99,235,0.12);
+        --cor-mapa-bg:           #0D1B2A;
+        --cor-mapa-bg2:          #060E17;
+        --cor-mapa-water:        #1A3352;
+        --cor-mapa-park:         #0E2419;
+        --cor-mapa-road:         rgba(255,255,255,0.07);
+        --cor-mapa-road-minor:   rgba(255,255,255,0.03);
+        --cor-table-header:      #162032;
+        --cor-table-row-pico:    rgba(245,158,11,0.08);
+        --sombra-sm:  0 1px 2px rgba(0,0,0,0.40);
+        --sombra-md:  0 4px 6px rgba(0,0,0,0.50);
+        --sombra-lg:  0 10px 25px rgba(0,0,0,0.65);
+        color-scheme: dark;
+    }
+
+    /* ====================================================================
+       RESET
+       ==================================================================== */
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+    /* As transições de tema são ativadas via .theme-ready (adicionada por JS
+       após a primeira renderização) para evitar flash na carga inicial. */
+    body.theme-ready * {
+        transition:
+            background-color 0.28s ease,
+            border-color     0.28s ease,
+            color            0.18s ease,
+            box-shadow       0.28s ease;
+    }
+
+    /* Não animar transforms ou animations existentes durante troca de tema */
+    body.theme-ready .ripple-wave,
+    body.theme-ready .pin,
+    body.theme-ready .btn-spinner,
+    body.theme-ready .skeleton-shimmer {
+        transition: none;
+    }
+
+    body {
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        background-color: var(--cor-fundo);
+        color: var(--cor-texto);
+        line-height: 1.5;
+        min-height: 100vh;
+        animation: pageEnter 0.32s ease both;
+    }
+
+    @keyframes pageEnter {
+        from { opacity: 0; transform: translateY(8px); }
+        to   { opacity: 1; transform: translateY(0); }
+    }
+
+    /* ====================================================================
+       HEADER COMPARTILHADO
+       ==================================================================== */
+    .header {
+        background: linear-gradient(135deg, var(--cor-primaria) 0%, var(--cor-primaria-dark) 100%);
+        color: white;
+        padding: 20px 24px;
+        box-shadow: var(--sombra-md);
+        position: sticky;
+        top: 0;
+        z-index: 100;
+    }
+
+    .header-content {
+        max-width: 1400px;
+        margin: 0 auto;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 16px;
+    }
+
+    .header-brand {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+    }
+
+    .brand-icon {
+        width: 36px;
+        height: 36px;
+        background: rgba(255,255,255,0.15);
+        border-radius: 8px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        backdrop-filter: blur(10px);
+        transition: background 0.2s, transform 0.2s;
+        text-decoration: none;
+    }
+
+    .brand-icon:hover { background: rgba(255,255,255,0.28); transform: scale(1.06); }
+
+    .brand-icon svg {
+        width: 22px;
+        height: 22px;
+        stroke: white;
+    }
+
+    /* Micro-interação: raio pisca ao hover */
+    .brand-icon:hover svg { animation: boltFlash 0.45s ease; }
+
+    @keyframes boltFlash {
+        0%   { transform: scale(1)    rotate(0deg);   filter: brightness(1);   }
+        35%  { transform: scale(1.35) rotate(-8deg);  filter: brightness(1.8); }
+        65%  { transform: scale(0.92) rotate(4deg);   filter: brightness(1.2); }
+        100% { transform: scale(1)    rotate(0deg);   filter: brightness(1);   }
+    }
+
+    .header h1 { font-size: 1.4rem; font-weight: 700; letter-spacing: -0.02em; }
+    .header-subtitle { font-size: 0.8rem; opacity: 0.9; }
+    .header-info { flex: 1; min-width: 0; }
+
+    .header-address {
+        font-size: 0.85rem;
+        opacity: 0.9;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+    }
+
+    .header-address svg { width: 14px; height: 14px; stroke: white; flex-shrink: 0; }
+
+    .back-button {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 40px;
+        height: 40px;
+        background: rgba(255,255,255,0.15);
+        border-radius: 8px;
+        color: white;
+        text-decoration: none;
+        transition: background 0.2s, transform 0.2s;
+        flex-shrink: 0;
+    }
+
+    .back-button:hover { background: rgba(255,255,255,0.28); transform: translateX(-2px); }
+    .back-button svg { width: 20px; height: 20px; stroke: white; }
+
+    /* Micro-interação: seta do back desliza */
+    .back-button:hover svg { transition: transform 0.18s ease; transform: translateX(-2px); }
+
+    /* ====================================================================
+       DARK MODE TOGGLE
+       ==================================================================== */
+    /* Botões de navegação no cabeçalho (Dashboard, Testes, etc.) */
+    .header-btn {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        padding: 8px 14px;
+        background: rgba(255,255,255,0.15);
+        border-radius: 8px;
+        color: white;
+        text-decoration: none;
+        font-size: 0.82rem;
+        font-weight: 600;
+        transition: background 0.18s, transform 0.14s, box-shadow 0.18s;
+    }
+    .header-btn:hover {
+        background: rgba(255,255,255,0.28);
+        transform: translateY(-2px);
+        box-shadow: 0 6px 16px rgba(0,0,0,0.22);
+    }
+    .header-btn:active { transform: translateY(0); box-shadow: 0 2px 6px rgba(0,0,0,0.2); }
+    .header-btn svg { width: 14px; height: 14px; stroke: white; fill: none; }
+
+    .theme-toggle {
+        width: 40px;
+        height: 40px;
+        background: rgba(255,255,255,0.15);
+        border: none;
+        border-radius: 8px;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+        transition: background 0.2s, transform 0.2s;
+        position: relative;
+        overflow: hidden;
+    }
+
+    .theme-toggle:hover { background: rgba(255,255,255,0.28); transform: scale(1.06); }
+
+    .theme-toggle svg {
+        width: 18px;
+        height: 18px;
+        stroke: white;
+        stroke-width: 2;
+        fill: none;
+        position: absolute;
+        transition:
+            transform 0.38s cubic-bezier(0.34, 1.56, 0.64, 1),
+            opacity   0.22s ease;
+    }
+
+    /* Sol: visível no dark mode */
+    .icon-sun  { opacity: 0; transform: rotate(80deg) scale(0.4); }
+    [data-theme="dark"] .icon-sun  { opacity: 1; transform: rotate(0deg) scale(1); }
+    [data-theme="dark"] .theme-toggle:hover .icon-sun  { transform: rotate(22deg) scale(1.12); }
+
+    /* Lua: visível no light mode */
+    .icon-moon { opacity: 1; transform: rotate(0deg) scale(1); }
+    [data-theme="dark"] .icon-moon { opacity: 0; transform: rotate(-80deg) scale(0.4); }
+    .theme-toggle:hover .icon-moon { transform: rotate(-18deg) scale(1.12); }
+
+    /* ====================================================================
+       SISTEMA DE TOAST NOTIFICATIONS
+       ==================================================================== */
+    .toast-container {
+        position: fixed;
+        top: 0;           /* valor real definido por JS após medir o header */
+        right: 24px;
+        z-index: 99999;
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        width: min(380px, calc(100vw - 48px));
+        pointer-events: none;
+    }
+
+    .toast {
+        background: var(--cor-card);
+        color: var(--cor-texto);
+        border-radius: 12px;
+        padding: 14px 16px 16px;
+        box-shadow: var(--sombra-lg);
+        display: flex;
+        align-items: flex-start;
+        gap: 12px;
+        font-size: 0.9rem;
+        line-height: 1.45;
+        position: relative;
+        overflow: hidden;
+        border: 1px solid var(--cor-borda);
+        pointer-events: all;
+        animation: toastIn 0.38s cubic-bezier(0.21, 1.02, 0.73, 1) both;
+    }
+
+    .toast.toast-exit { animation: toastOut 0.26s ease forwards; }
+
+    @keyframes toastIn  {
+        from { transform: translateX(115%) scale(0.94); opacity: 0; }
+        to   { transform: translateX(0)     scale(1);    opacity: 1; }
+    }
+    @keyframes toastOut {
+        from { transform: translateX(0)     scale(1);    opacity: 1; max-height: 200px; }
+        to   { transform: translateX(115%)  scale(0.94); opacity: 0; max-height: 0; }
+    }
+
+    .toast-error   { border-left: 4px solid var(--cor-ocupado); }
+    .toast-success { border-left: 4px solid var(--cor-livre); }
+    .toast-warning { border-left: 4px solid var(--cor-aviso); }
+    .toast-info    { border-left: 4px solid var(--cor-info); }
+
+    .toast-icon {
+        width: 20px; height: 20px; flex-shrink: 0; margin-top: 1px;
+        fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round;
+    }
+
+    .toast-error   .toast-icon { stroke: var(--cor-ocupado); }
+    .toast-success .toast-icon { stroke: var(--cor-livre); }
+    .toast-warning .toast-icon { stroke: var(--cor-aviso); }
+    .toast-info    .toast-icon { stroke: var(--cor-info); }
+
+    .toast-body { flex: 1; min-width: 0; }
+
+    .toast-close {
+        width: 22px; height: 22px; border: none; background: none;
+        cursor: pointer; border-radius: 4px; display: flex; align-items: center;
+        justify-content: center; flex-shrink: 0; padding: 0;
+        color: var(--cor-texto-secundario);
+        transition: color 0.15s, background 0.15s;
+    }
+    .toast-close:hover { background: var(--cor-fundo); color: var(--cor-texto); }
+    .toast-close svg { width: 13px; height: 13px; stroke: currentColor; stroke-width: 2.5; fill: none; }
+
+    .toast-progress {
+        position: absolute; bottom: 0; left: 0; height: 3px;
+        border-radius: 0 0 0 8px;
+        animation: toastProgress linear forwards;
+    }
+    .toast-error   .toast-progress { background: var(--cor-ocupado); }
+    .toast-success .toast-progress { background: var(--cor-livre); }
+    .toast-warning .toast-progress { background: var(--cor-aviso); }
+    .toast-info    .toast-progress { background: var(--cor-info); }
+
+    @keyframes toastProgress { from { width: 100%; } to { width: 0%; } }
+
+    /* Barra de progresso de navegação entre páginas */
+    #cgi-nav-bar {
+        position: fixed; top: 0; left: 0; height: 3px; width: 0%; z-index: 10000;
+        background: linear-gradient(90deg, var(--cor-primaria), #FF6B6B);
+        border-radius: 0 2px 2px 0;
+        box-shadow: 0 0 8px rgba(192,0,0,0.5);
+        transition: width 0.3s ease, opacity 0.25s ease;
+        pointer-events: none;
+    }
+
+    /* ====================================================================
+       SKELETON SCREENS
+       ==================================================================== */
+    .skeleton-shimmer {
+        background: linear-gradient(
+            90deg,
+            var(--cor-borda) 0%,
+            var(--cor-card)  50%,
+            var(--cor-borda) 100%
+        );
+        background-size: 200% 100%;
+        animation: shimmerAnim 1.5s ease infinite;
+        border-radius: 6px;
+    }
+
+    /* Skeleton sobre superficie escura (cost-preview) */
+    .skeleton-on-dark {
+        background: linear-gradient(
+            90deg,
+            rgba(255,255,255,0.06) 0%,
+            rgba(255,255,255,0.15) 50%,
+            rgba(255,255,255,0.06) 100%
+        );
+        background-size: 200% 100%;
+        animation: shimmerAnim 1.5s ease infinite;
+        border-radius: 6px;
+    }
+
+    @keyframes shimmerAnim {
+        0%   { background-position: 200% center; }
+        100% { background-position: -200% center; }
+    }
+
+    /* ====================================================================
+       RIPPLE EFFECT
+       ==================================================================== */
+    .btn-action, .btn-submit, .btn, .back-button,
+    .theme-toggle, .btn-primary, .btn-secondary, .station-card {
+        position: relative;
+        overflow: hidden;
+    }
+
+    .ripple-wave {
+        position: absolute;
+        width: 0; height: 0;
+        border-radius: 50%;
+        background: rgba(255,255,255,0.32);
+        transform: translate(-50%, -50%);
+        animation: rippleExpand 0.65s ease-out forwards;
+        pointer-events: none;
+        z-index: 10;
+    }
+
+    .station-card .ripple-wave  { background: rgba(192,0,0,0.07); }
+    .charger-card .ripple-wave  { background: rgba(16,185,129,0.10); }
+    .charger-card.vip .ripple-wave { background: rgba(245,158,11,0.12); }
+
+    @keyframes rippleExpand { to { width: 650px; height: 650px; opacity: 0; } }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ====================================================================
+       CARD TILT
+       ==================================================================== */
+    .tilt-enabled { transform-style: preserve-3d; will-change: transform; }
+
+    /* ====================================================================
+       MICRO-INTERAÇÕES — Ícones
+       ==================================================================== */
+    .station-card:not(.indisponivel):hover .station-address svg {
+        animation: pinBounce 0.42s ease;
+    }
+    @keyframes pinBounce {
+        0%  { transform: translateY(0); }
+        38% { transform: translateY(-5px); }
+        68% { transform: translateY(1px); }
+        100%{ transform: translateY(0); }
+    }
+
+    .charger-card.livre:hover .charger-icon-box svg,
+    .charger-card.vip:hover   .charger-icon-box svg {
+        animation: boltPulse 0.48s ease;
+    }
+    @keyframes boltPulse {
+        0%  { transform: scale(1)    rotate(0deg);  filter: brightness(1);   }
+        30% { transform: scale(1.4)  rotate(-10deg);filter: brightness(2);   }
+        65% { transform: scale(0.88) rotate(4deg);  filter: brightness(1.2); }
+        100%{ transform: scale(1)    rotate(0deg);  filter: brightness(1);   }
+    }
+
+    .stat-icon svg { transition: transform 0.2s cubic-bezier(0.34,1.56,0.64,1); }
+    .stat-item:hover .stat-icon svg { transform: scale(1.2); }
+
+    /* ====================================================================
+       SPINNER
+       ==================================================================== */
+    .btn-spinner {
+        display: inline-block; width: 16px; height: 16px;
+        border: 2px solid rgba(255,255,255,0.3);
+        border-top-color: white; border-radius: 50%;
+        animation: spinAnim 0.72s linear infinite; flex-shrink: 0;
+    }
+    @keyframes spinAnim { to { transform: rotate(360deg); } }
+
+    @keyframes cardEnter {
+        from { opacity: 0; transform: translateY(14px); }
+        to   { opacity: 1; transform: translateY(0); }
+    }
+
+    /* ====================================================================
+       RESPONSIVO
+       ==================================================================== */
+    @media (max-width: 640px) {
+        .toast-container { top: 80px !important; right: 16px; width: calc(100vw - 32px); }
+    }
+    </style>
+
+    {% block extra_css %}{% endblock %}
+</head>
+<body>
+
+    {# Bridge Flask flash → JS Toast (server-side data, client-side presentation) #}
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+        <div id="cgi-flash-bridge" hidden aria-hidden="true">
+            {% for category, message in messages %}
+            <span data-type="{{ category }}" data-msg="{{ message | e }}"></span>
+            {% endfor %}
+        </div>
+        {% endif %}
+    {% endwith %}
+
+    {% block header %}{% endblock %}
+
+    <!-- toastContainer é movido para <body> via JS para escapar de qualquer stacking context -->
+
+    {% block content %}{% endblock %}
+
+    <script>
+    'use strict';
+
+    // ==================================================================
+    // ThemeManager — Dark mode com persistência
+    // ==================================================================
+    const ThemeManager = (function () {
+        const KEY = 'cgi-theme';
+        function getTheme()   { return localStorage.getItem(KEY) || 'light'; }
+        function applyTheme(t){ document.documentElement.setAttribute('data-theme', t); }
+        function toggle()     { const n = getTheme() === 'dark' ? 'light' : 'dark'; localStorage.setItem(KEY, n); applyTheme(n); }
+
+        function init() {
+            applyTheme(getTheme());
+            // Habilita transições somente após o primeiro frame renderizado
+            requestAnimationFrame(() => requestAnimationFrame(() => {
+                document.body.classList.add('theme-ready');
+            }));
+            document.querySelectorAll('.theme-toggle').forEach(b => b.addEventListener('click', toggle));
+        }
+        return { init, getTheme };
+    }());
+
+    // ==================================================================
+    // ToastSystem — Notificações fixas (container appendado ao <body>
+    //               para escapar de qualquer stacking context)
+    // ==================================================================
+    const ToastSystem = (function () {
+        const DEFAULT_DURATION = 5500;
+        const ICONS = {
+            error:   '<svg class="toast-icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>',
+            success: '<svg class="toast-icon" viewBox="0 0 24 24"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>',
+            warning: '<svg class="toast-icon" viewBox="0 0 24 24"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>',
+            info:    '<svg class="toast-icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>',
+        };
+
+        function getContainer() {
+            var c = document.getElementById('toastContainer');
+            if (c) return c;
+            c = document.createElement('div');
+            c.id = 'toastContainer';
+            c.className = 'toast-container';
+            c.setAttribute('role', 'region');
+            c.setAttribute('aria-label', 'Notificações');
+            c.setAttribute('aria-live', 'polite');
+            // Último filho do body — fora de qualquer contexto de transformação
+            document.body.appendChild(c);
+
+            // top dinâmico: cola logo abaixo do header real (não hardcoded)
+            function ajustarTop() {
+                var h = document.querySelector('.header');
+                c.style.top = ((h ? h.offsetHeight : 0) + 8) + 'px';
+            }
+            ajustarTop();
+            window.addEventListener('resize', ajustarTop);
+
+            return c;
+        }
+
+        function show(message, type, duration) {
+            type     = type     || 'info';
+            duration = duration || DEFAULT_DURATION;
+
+            const container = getContainer();
+            if (!container) return null;
+
+            const toast = document.createElement('div');
+            toast.className = 'toast toast-' + type;
+            toast.innerHTML =
+                (ICONS[type] || ICONS.info) +
+                '<div class="toast-body">' + message + '</div>' +
+                '<button class="toast-close" aria-label="Fechar">' +
+                  '<svg viewBox="0 0 24 24" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>' +
+                '</button>' +
+                '<div class="toast-progress" style="animation-duration:' + duration + 'ms"></div>';
+
+            container.appendChild(toast);
+
+            const bar   = toast.querySelector('.toast-progress');
+            let timerId = setTimeout(function(){ dismiss(toast); }, duration);
+
+            toast.addEventListener('mouseenter', function () {
+                clearTimeout(timerId);
+                bar.style.animationPlayState = 'paused';
+            });
+            toast.addEventListener('mouseleave', function () {
+                const pct = parseFloat(getComputedStyle(bar).width) / toast.offsetWidth;
+                bar.style.animationPlayState = 'running';
+                timerId = setTimeout(function(){ dismiss(toast); }, pct * duration);
+            });
+            toast.querySelector('.toast-close').addEventListener('click', function () {
+                clearTimeout(timerId);
+                dismiss(toast);
+            });
+            return toast;
+        }
+
+        function dismiss(toast) {
+            if (!toast || toast.classList.contains('toast-exit')) return;
+            toast.classList.add('toast-exit');
+            setTimeout(function(){ toast.remove(); }, 280);
+        }
+
+        function init() {
+            var bridge = document.getElementById('cgi-flash-bridge');
+            if (!bridge) return;
+            bridge.querySelectorAll('span[data-msg]').forEach(function(s) {
+                var type = { error:'error', success:'success', warning:'warning' }[s.dataset.type] || 'info';
+                show(s.dataset.msg, type);
+            });
+            bridge.remove();
+        }
+
+        return { show: show, dismiss: dismiss, init: init };
+    }());
+
+    // ==================================================================
+    // RippleEffect — Onda de clique em elementos interativos
+    // A animação completa 100% independente de soltar o mouse.
+    // Para <a> que navegam na mesma aba: a navegação é atrasada 320ms
+    // para que o ripple seja visível antes de a página mudar.
+    // ==================================================================
+    const RippleEffect = (function () {
+        var RIPPLE_DURATION = 700; // ms — deve ser >= duração do @keyframes
+
+        function createWave(el, clientX, clientY) {
+            var rect = el.getBoundingClientRect();
+            var w    = document.createElement('span');
+            w.className  = 'ripple-wave';
+            w.style.left = (clientX - rect.left) + 'px';
+            w.style.top  = (clientY - rect.top)  + 'px';
+            el.appendChild(w);
+            // Remove após a animação — independente de navegação
+            setTimeout(function(){ if (w.parentNode) w.remove(); }, RIPPLE_DURATION);
+        }
+
+        function attach(el) {
+            // Ripple inicia no pointerdown para feedback imediato
+            el.addEventListener('pointerdown', function (e) {
+                if (el.disabled) return;
+                createWave(el, e.clientX, e.clientY);
+            });
+
+            // Para <a> que navegam na mesma aba: atrasa a navegação
+            // 320ms para o ripple ser visível antes de a página mudar.
+            if (el.tagName === 'A' && el.getAttribute('href')) {
+                el.addEventListener('click', function (e) {
+                    // Modificadores ou target externo: comportamento nativo
+                    if (e.ctrlKey || e.metaKey || e.shiftKey) return;
+                    if (el.target === '_blank') return;
+                    e.preventDefault();
+                    var href = el.href;
+                    setTimeout(function () { window.location.href = href; }, 320);
+                });
+            }
+        }
+
+        function init() {
+            var SEL = '.btn-action,.btn-submit,.btn,.back-button,.theme-toggle,.btn-primary,.btn-secondary';
+            document.querySelectorAll(SEL).forEach(attach);
+            document.querySelectorAll('.station-card:not(.indisponivel)').forEach(attach);
+            document.querySelectorAll('.charger-card.livre,.charger-card.vip').forEach(attach);
+        }
+        return { init: init, attach: attach };
+    }());
+
+    // ==================================================================
+    // CardTilt — Inclinação 3D sutil seguindo cursor (apenas desktop)
+    // ==================================================================
+    const CardTilt = (function () {
+        var MAX = 4.5;
+
+        function attach(card) {
+            card.classList.add('tilt-enabled');
+            var raf;
+            card.addEventListener('mousemove', function (e) {
+                var self = this;
+                cancelAnimationFrame(raf);
+                raf = requestAnimationFrame(function() {
+                    var r  = self.getBoundingClientRect();
+                    var dx = (e.clientX - (r.left + r.width  / 2)) / (r.width  / 2);
+                    var dy = (e.clientY - (r.top  + r.height / 2)) / (r.height / 2);
+                    self.style.transform = 'perspective(900px) rotateX(' + (-dy*MAX) + 'deg) rotateY(' + (dx*MAX) + 'deg) translateY(-3px) scale(1.015)';
+                    self.style.transition = 'transform 0.06s ease';
+                });
+            });
+            card.addEventListener('mouseleave', function () {
+                cancelAnimationFrame(raf);
+                this.style.transition = 'transform 0.45s cubic-bezier(0.34,1.56,0.64,1)';
+                this.style.transform  = '';
+            });
+        }
+
+        function init() {
+            if (!window.matchMedia('(hover: hover) and (pointer: fine)').matches) return;
+            document.querySelectorAll('.charger-card.livre,.charger-card.vip,.station-card:not(.indisponivel)').forEach(attach);
+        }
+        return { init: init, attach: attach };
+    }());
+
+    // ==================================================================
+    // PageProgress — Barra de carregamento durante navegação
+    // ==================================================================
+    (function () {
+        var bar = document.createElement('div');
+        bar.id = 'cgi-nav-bar';
+        document.body.appendChild(bar);
+
+        document.addEventListener('click', function (e) {
+            var link = e.target.closest('a[href]');
+            if (!link) return;
+            var href = link.getAttribute('href') || '';
+            if (!href || href.startsWith('#') || href.startsWith('javascript')) return;
+            try { if (new URL(href, location.href).hostname !== location.hostname) return; } catch(err) { return; }
+            bar.style.width = '42%';
+            bar.style.opacity = '1';
+        });
+
+        window.addEventListener('pageshow', function () {
+            bar.style.width = '100%';
+            setTimeout(function(){ bar.style.opacity = '0'; bar.style.width = '0'; }, 280);
+        });
+    }());
+
+    // ==================================================================
+    // INIT
+    // ==================================================================
+    document.addEventListener('DOMContentLoaded', function () {
+        ThemeManager.init();
+        ToastSystem.init();
+        RippleEffect.init();
+        CardTilt.init();
+    });
+
+    window.ChargeGrid = { ThemeManager: ThemeManager, ToastSystem: ToastSystem, RippleEffect: RippleEffect, CardTilt: CardTilt };
+    </script>
+
+    {% block scripts %}{% endblock %}
+</body>
+</html>

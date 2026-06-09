@@ -1,0 +1,954 @@
+{% extends "base.html" %}
+
+{% block title %}ChargeGrid Intelligence — Postos Próximos{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"
+      crossorigin="" referrerpolicy="no-referrer" />
+<style>
+/* ====================================================================
+   MAPA LEAFLET — marcadores customizados (gota colorida por status)
+   ==================================================================== */
+.leaflet-map {
+    width: 100%;
+    height: 100%;
+    min-height: 600px;
+    border-radius: 16px;
+    z-index: 1;
+}
+/* Marcador customizado: usa o mesmo SVG de gota dos pins originais */
+.cg-marker {
+    background: transparent;
+    border: none;
+}
+.cg-marker svg {
+    filter: drop-shadow(0 3px 6px rgba(0,0,0,0.35));
+    transition: transform 0.15s ease;
+    cursor: pointer;
+}
+.cg-marker:hover svg { transform: scale(1.12); }
+/* Selo ⚡ de throttle sobre o marcador */
+.cg-marker .cg-bolt {
+    position: absolute;
+    top: -4px; right: -6px;
+    width: 18px; height: 18px;
+    background: #F59E0B;
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 10px; color: white;
+    box-shadow: 0 0 0 2px white;
+    animation: cgBoltPulse 1.8s ease infinite;
+}
+@keyframes cgBoltPulse {
+    0%, 100% { box-shadow: 0 0 0 2px white, 0 0 0 4px rgba(245,158,11,0); }
+    50%      { box-shadow: 0 0 0 2px white, 0 0 0 7px rgba(245,158,11,0.45); }
+}
+/* Popup do Leaflet com a identidade visual do app */
+.leaflet-popup-content-wrapper {
+    border-radius: 12px;
+    box-shadow: var(--sombra-md);
+}
+/* O popup do Leaflet tem fundo branco fixo (não herda o dark mode), então as
+   cores do texto são fixas escuras para garantir legibilidade nos dois temas. */
+.cg-popup-nome { font-weight: 700; font-size: 0.95rem; margin-bottom: 2px; color: #1F2937; }
+.cg-popup-end  { font-size: 0.75rem; color: #6B7280; margin-bottom: 8px; }
+.cg-popup-status { font-size: 0.78rem; font-weight: 600; margin-bottom: 8px; }
+.cg-popup-status.disponivel  { color: #059669; }
+.cg-popup-status.throttle    { color: #D97706; }
+.cg-popup-status.indisponivel{ color: #DC2626; }
+.cg-popup-btn,
+.cg-popup-btn:link,
+.cg-popup-btn:visited,
+.cg-popup-btn:hover,
+.cg-popup-btn:active {
+    display: inline-block;
+    background: var(--cor-primaria);
+    color: #FFFFFF !important;   /* sobrepõe a cor de link padrão (azul) */
+    text-decoration: none;
+    padding: 6px 14px; border-radius: 8px;
+    font-size: 0.8rem; font-weight: 600;
+    transition: filter 0.15s ease, transform 0.15s ease;
+}
+.cg-popup-btn:hover { filter: brightness(1.1); transform: translateY(-1px); }
+
+/* ====================================================================
+   LAYOUT PRINCIPAL
+   ==================================================================== */
+.container {
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 24px;
+    display: grid;
+    grid-template-columns: 1fr 380px;
+    gap: 24px;
+    min-height: calc(100vh - 80px);
+}
+
+/* ====================================================================
+   MAPA
+   ==================================================================== */
+.map-container {
+    background: var(--cor-card);
+    border-radius: 16px;
+    overflow: hidden;
+    box-shadow: var(--sombra-md);
+    position: relative;
+    min-height: 600px;
+    border: 1px solid var(--cor-borda);
+}
+
+.map {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    min-height: 600px;
+    overflow: hidden;
+    /* Background usa CSS variables — compatível com dark mode */
+    background: linear-gradient(135deg, var(--cor-mapa-bg) 0%, var(--cor-mapa-bg2) 100%);
+    background-image:
+        radial-gradient(ellipse 250px 180px at 75% 25%, var(--cor-mapa-park)  60%, transparent 65%),
+        radial-gradient(ellipse 180px 120px at 15% 80%, var(--cor-mapa-park)  60%, transparent 65%),
+        radial-gradient(ellipse 300px 200px at 90% 90%, var(--cor-mapa-water) 60%, transparent 65%),
+        linear-gradient(135deg, var(--cor-mapa-bg) 0%, var(--cor-mapa-bg2) 100%);
+}
+
+/* Avenidas principais */
+.map::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background-image:
+        linear-gradient(0deg,   transparent 18%, var(--cor-mapa-road) 18%, var(--cor-mapa-road) 20%, transparent 20%),
+        linear-gradient(0deg,   transparent 48%, var(--cor-mapa-road) 48%, var(--cor-mapa-road) 51%, transparent 51%),
+        linear-gradient(0deg,   transparent 78%, var(--cor-mapa-road) 78%, var(--cor-mapa-road) 80%, transparent 80%),
+        linear-gradient(90deg,  transparent 22%, var(--cor-mapa-road) 22%, var(--cor-mapa-road) 24%, transparent 24%),
+        linear-gradient(90deg,  transparent 52%, var(--cor-mapa-road) 52%, var(--cor-mapa-road) 55%, transparent 55%),
+        linear-gradient(90deg,  transparent 82%, var(--cor-mapa-road) 82%, var(--cor-mapa-road) 84%, transparent 84%);
+    pointer-events: none;
+}
+
+/* Ruas secundárias */
+.map::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background-image:
+        linear-gradient(0deg,   transparent 33%, var(--cor-mapa-road-minor) 33%, var(--cor-mapa-road-minor) 34%, transparent 34%),
+        linear-gradient(0deg,   transparent 63%, var(--cor-mapa-road-minor) 63%, var(--cor-mapa-road-minor) 64%, transparent 64%),
+        linear-gradient(90deg,  transparent 37%, var(--cor-mapa-road-minor) 37%, var(--cor-mapa-road-minor) 38%, transparent 38%),
+        linear-gradient(90deg,  transparent 67%, var(--cor-mapa-road-minor) 67%, var(--cor-mapa-road-minor) 68%, transparent 68%);
+    pointer-events: none;
+}
+
+/* ====================================================================
+   PINS DE LOCALIZAÇÃO
+   ==================================================================== */
+.pin {
+    position: absolute;
+    transform: translate(-50%, -100%);
+    cursor: pointer;
+    z-index: 10;
+    transition: transform 0.2s ease, filter 0.2s ease;
+}
+
+.pin:hover { transform: translate(-50%, -100%) scale(1.12); z-index: 20; }
+
+.pin-marker { position: relative; width: 44px; height: 56px; filter: drop-shadow(0 4px 10px rgba(0,0,0,0.28)); }
+.pin-svg    { width: 100%; height: 100%; }
+
+.pin-label {
+    position: absolute;
+    top: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    background: var(--cor-card);
+    color: var(--cor-texto);
+    padding: 6px 12px;
+    border-radius: 8px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    box-shadow: var(--sombra-md);
+    white-space: nowrap;
+    margin-top: 4px;
+    border: 1px solid var(--cor-borda);
+}
+
+.pin.disponivel .pin-label {
+    background: var(--cor-livre);
+    color: white;
+    border-color: var(--cor-livre);
+}
+
+.pin.indisponivel { opacity: 0.75; }
+.pin.indisponivel:hover { opacity: 1; }
+/* Throttle: pin âmbar pulsante (aplica a qualquer pin com controle ativo,
+   inclusive lotado) */
+.pin.throttle .pin-marker::after,
+.pin.tem-throttle .pin-marker::after {
+    content: '⚡';
+    position: absolute;
+    top: -6px; right: -8px;
+    font-size: 12px;
+    background: #F59E0B;
+    border-radius: 50%;
+    width: 18px; height: 18px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 10px;
+    box-shadow: 0 0 0 2px white;
+    animation: throttlePulse 1.8s ease infinite;
+}
+@keyframes throttlePulse {
+    0%, 100% { box-shadow: 0 0 0 2px white, 0 0 0 4px rgba(245,158,11,0); }
+    50%       { box-shadow: 0 0 0 2px white, 0 0 0 6px rgba(245,158,11,0.4); }
+}
+/* Station card indisponivel: mantém cursor pointer (clicável) */
+.station-card.indisponivel { opacity: 0.85; cursor: pointer; }
+.station-card.indisponivel:hover { opacity: 1; }
+/* Badge throttle no card */
+.throttle-badge {
+    display: inline-flex; align-items: center; gap: 4px;
+    font-size: 0.68rem; font-weight: 700;
+    padding: 2px 8px; border-radius: 99px;
+    background: #FEF3C7; color: #92400E;
+    margin-left: 6px;
+}
+[data-theme="dark"] .throttle-badge {
+    background: rgba(245,158,11,0.2); color: #FCD34D;
+}
+
+/* Pulso animado no pin disponível */
+.pin.disponivel .pin-marker::before {
+    content: '';
+    position: absolute;
+    bottom: 6px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 36px; height: 36px;
+    border-radius: 50%;
+    background: rgba(16, 185, 129, 0.3);
+    animation: pulsaPin 2s ease-out infinite;
+}
+
+@keyframes pulsaPin {
+    0%   { transform: translateX(-50%) scale(0.8); opacity: 1; }
+    100% { transform: translateX(-50%) scale(2.2); opacity: 0; }
+}
+
+/* Marcador "Você está aqui" */
+.user-location { position: absolute; top: 50%; left: 60%; transform: translate(-50%, -50%); z-index: 5; }
+.user-dot { width: 18px; height: 18px; background: #2563EB; border: 3px solid white; border-radius: 50%; box-shadow: 0 0 0 6px rgba(37,99,235,0.2); }
+.user-label { position: absolute; top: -32px; left: 50%; transform: translateX(-50%); background: #2563EB; color: white; padding: 4px 10px; border-radius: 6px; font-size: 0.7rem; font-weight: 600; white-space: nowrap; }
+
+/* ====================================================================
+   PAINEL LATERAL
+   ==================================================================== */
+.sidebar { display: flex; flex-direction: column; gap: 16px; }
+
+.sidebar-header {
+    background: var(--cor-card);
+    padding: 20px;
+    border-radius: 12px;
+    box-shadow: var(--sombra-sm);
+    border: 1px solid var(--cor-borda);
+}
+
+.sidebar-title    { font-size: 1.1rem; font-weight: 700; color: var(--cor-texto); margin-bottom: 4px; }
+.sidebar-subtitle { font-size: 0.85rem; color: var(--cor-texto-secundario); }
+
+.station-list { display: flex; flex-direction: column; gap: 12px; }
+
+/* Cada card entra com stagger — simula chegada de dados (skeleton feeling) */
+.station-card {
+    background: var(--cor-card);
+    padding: 16px;
+    border-radius: 12px;
+    box-shadow: var(--sombra-sm);
+    border: 1px solid var(--cor-borda);
+    cursor: pointer;
+    text-decoration: none;
+    color: inherit;
+    display: block;
+    opacity: 0;
+    animation: cardEnter 0.38s ease forwards;
+}
+
+.station-card:nth-child(1) { animation-delay: 0.08s; }
+.station-card:nth-child(2) { animation-delay: 0.16s; }
+.station-card:nth-child(3) { animation-delay: 0.24s; }
+.station-card:nth-child(n+4) { animation-delay: 0.32s; }
+
+.station-card:not(.indisponivel):hover {
+    box-shadow: var(--sombra-md);
+    border-color: var(--cor-primaria);
+}
+
+.station-card.indisponivel { opacity: 0.6; cursor: not-allowed; }
+.station-card.indisponivel:hover { opacity: 0.7; }
+
+.station-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px; gap: 8px; }
+.station-name   { font-size: 0.95rem; font-weight: 700; color: var(--cor-texto); line-height: 1.3; }
+
+.station-status {
+    font-size: 0.7rem; font-weight: 700;
+    padding: 4px 10px; border-radius: 6px;
+    letter-spacing: 0.02em; text-transform: uppercase; flex-shrink: 0;
+}
+
+.station-status.disponivel  { background: #D1FAE5; color: #065F46; }
+.station-status.indisponivel{ background: #FEE2E2; color: #991B1B; }
+.station-status.throttle    { background: #FEF3C7; color: #92400E; }
+
+[data-theme="dark"] .station-status.disponivel   { background: rgba(16,185,129,0.18);  color: #6EE7B7; }
+[data-theme="dark"] .station-status.indisponivel { background: rgba(239,68,68,0.18);   color: #FCA5A5; }
+[data-theme="dark"] .station-status.throttle     { background: rgba(245,158,11,0.18);  color: #FCD34D; }
+
+.station-address {
+    font-size: 0.8rem; color: var(--cor-texto-secundario);
+    margin-bottom: 12px; display: flex; align-items: flex-start; gap: 6px;
+}
+.station-address svg { width: 14px; height: 14px; stroke: var(--cor-texto-secundario); flex-shrink: 0; margin-top: 1px; }
+
+.station-info { display: flex; justify-content: space-between; align-items: center; padding-top: 12px; border-top: 1px solid var(--cor-borda); font-size: 0.8rem; }
+
+.station-detail { display: flex; align-items: center; gap: 6px; color: var(--cor-texto-secundario); }
+.station-detail svg { width: 14px; height: 14px; stroke: var(--cor-texto-secundario); }
+.station-detail.available { color: var(--cor-livre); font-weight: 600; }
+.station-detail.available svg { stroke: var(--cor-livre); }
+
+/* ====================================================================
+   FILTER CHIPS
+   ==================================================================== */
+.filter-bar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 14px;
+}
+
+.chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 14px;
+    border-radius: 99px;
+    font-size: 0.78rem;
+    font-weight: 600;
+    cursor: pointer;
+    border: 1.5px solid var(--cor-borda);
+    background: var(--cor-card);
+    color: var(--cor-texto-secundario);
+    transition: all 0.18s ease;
+    user-select: none;
+    white-space: nowrap;
+}
+.chip svg {
+    width: 13px; height: 13px;
+    stroke: currentColor;
+    transition: stroke 0.18s ease;
+}
+.chip:hover {
+    border-color: var(--cor-primaria);
+    color: var(--cor-primaria);
+}
+.chip.active {
+    background: var(--cor-primaria);
+    border-color: var(--cor-primaria);
+    color: white;
+    box-shadow: 0 2px 8px rgba(192,0,0,0.25);
+}
+[data-theme="dark"] .chip.active {
+    box-shadow: 0 2px 12px rgba(192,0,0,0.4);
+}
+
+/* ====================================================================
+   PULSE RING — "Você está aqui"
+   ==================================================================== */
+.user-location {
+    position: absolute;
+    top: 50%; left: 60%;
+    transform: translate(-50%, -50%);
+    z-index: 5;
+}
+
+.user-pulse-wrapper {
+    position: relative;
+    width: 18px; height: 18px;
+}
+
+.user-dot {
+    width: 18px; height: 18px;
+    background: #2563EB;
+    border: 3px solid white;
+    border-radius: 50%;
+    box-shadow: 0 0 0 2px rgba(37,99,235,0.3);
+    position: relative;
+    z-index: 2;
+}
+
+/* Dois anéis concêntricos que expandem para fora */
+.pulse-ring {
+    position: absolute;
+    top: 50%; left: 50%;
+    transform: translate(-50%, -50%) scale(1);
+    width: 18px; height: 18px;
+    border-radius: 50%;
+    border: 2px solid #2563EB;
+    opacity: 0;
+    animation: pulseRing 2.4s cubic-bezier(0.22,1,0.36,1) infinite;
+}
+.pulse-ring:nth-child(2) { animation-delay: 0s; }
+.pulse-ring:nth-child(3) { animation-delay: 0.8s; }
+
+@keyframes pulseRing {
+    0%   { transform: translate(-50%, -50%) scale(1);   opacity: 0.7; }
+    100% { transform: translate(-50%, -50%) scale(3.8); opacity: 0;   }
+}
+
+.user-label {
+    position: absolute;
+    top: -32px; left: 50%;
+    transform: translateX(-50%);
+    background: #2563EB;
+    color: white;
+    padding: 4px 10px;
+    border-radius: 6px;
+    font-size: 0.7rem;
+    font-weight: 600;
+    white-space: nowrap;
+    pointer-events: none;
+}
+
+/* ====================================================================
+   TOOLTIP DOS PINS
+   ==================================================================== */
+.pin-tooltip {
+    position: absolute;
+    background: var(--cor-card);
+    border: 1px solid var(--cor-borda);
+    border-radius: 10px;
+    padding: 12px 14px;
+    box-shadow: var(--sombra-lg);
+    pointer-events: none;
+    z-index: 50;
+    width: 210px;
+    opacity: 0;
+    transform: translateY(6px) scale(0.97);
+    transition: opacity 0.18s ease, transform 0.18s ease;
+}
+.pin-tooltip.visible {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+}
+.pin-tooltip-name {
+    font-size: 0.85rem;
+    font-weight: 700;
+    color: var(--cor-texto);
+    margin-bottom: 4px;
+    line-height: 1.3;
+}
+.pin-tooltip-address {
+    font-size: 0.75rem;
+    color: var(--cor-texto-secundario);
+    margin-bottom: 10px;
+    line-height: 1.4;
+}
+.pin-tooltip-row {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.78rem;
+    padding: 4px 0;
+}
+.pin-tooltip-row + .pin-tooltip-row {
+    border-top: 1px solid var(--cor-borda);
+}
+.pin-tooltip-key   { color: var(--cor-texto-secundario); }
+.pin-tooltip-val   { font-weight: 600; color: var(--cor-texto); }
+.pin-tooltip-val.disponivel { color: var(--cor-livre-dark); }
+.pin-tooltip-val.indisponivel { color: #EF4444; }
+
+/* Seta apontando para o pin */
+.pin-tooltip::after {
+    content: '';
+    position: absolute;
+    bottom: -7px;
+    left: 50%;
+    transform: translateX(-50%);
+    border-left: 7px solid transparent;
+    border-right: 7px solid transparent;
+    border-top: 7px solid var(--cor-card);
+    filter: drop-shadow(0 1px 1px rgba(0,0,0,0.06));
+}
+
+/* Cartão oculto quando filtro exclui o pin */
+.pin.filtered-out { display: none; }
+.station-card.filtered-out { display: none; }
+
+/* Filtro de assinante: posto sem conector C5 livre — visível, mas atenuado,
+   com uma faixa indicando que não há vaga de assinante. */
+.station-card.vip-bloqueado {
+    opacity: 0.55;
+    filter: grayscale(0.4);
+    position: relative;
+}
+.station-card.vip-bloqueado::after {
+    content: "Sem vaga de assinante (C5)";
+    position: absolute;
+    top: 8px; right: 8px;
+    background: var(--cor-ocupado, #EF4444);
+    color: #fff;
+    font-size: 0.62rem;
+    font-weight: 700;
+    padding: 2px 8px;
+    border-radius: 99px;
+    letter-spacing: 0.02em;
+}
+.legend {
+    background: var(--cor-card);
+    padding: 16px;
+    border-radius: 12px;
+    box-shadow: var(--sombra-sm);
+    border: 1px solid var(--cor-borda);
+}
+
+.legend-title  { font-size: 0.8rem; font-weight: 700; color: var(--cor-texto); margin-bottom: 12px; text-transform: uppercase; letter-spacing: 0.05em; }
+.legend-items  { display: flex; flex-direction: column; gap: 8px; }
+.legend-item   { display: flex; align-items: center; gap: 10px; font-size: 0.85rem; color: var(--cor-texto-secundario); }
+.legend-pin    { width: 16px; height: 20px; flex-shrink: 0; }
+
+/* ====================================================================
+   RESPONSIVO
+   ==================================================================== */
+@media (max-width: 1024px) {
+    .container { grid-template-columns: 1fr; }
+    .map-container, .map { min-height: 400px; }
+}
+@media (max-width: 640px) {
+    .container { padding: 16px; gap: 16px; }
+    .header { padding: 16px; }
+    .header h1 { font-size: 1.1rem; }
+}
+</style>
+{% endblock %}
+
+
+{% block header %}
+<header class="header">
+    <div class="header-content">
+        <div class="header-brand">
+            <a href="{{ url_for('mapa') }}" class="brand-icon" title="ChargeGrid Intelligence">
+                <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon>
+                </svg>
+            </a>
+            <div>
+                <h1>ChargeGrid Intelligence</h1>
+                <div class="header-subtitle">Encontre o posto de recarga ideal</div>
+            </div>
+        </div>
+
+        <!-- Links de navegação + Dark Mode Toggle -->
+        <div style="display:flex;align-items:center;gap:8px;">
+            <a href="{{ url_for('dashboard') }}"
+               class="header-btn">
+                <svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" width="14" height="14" stroke-linecap="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+                Dashboard
+            </a>
+            <a href="{{ url_for('testes') }}"
+               class="header-btn">
+                <svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" width="14" height="14" stroke-linecap="round"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+                Testes
+            </a>
+            <button class="theme-toggle" title="Alternar tema claro/escuro" aria-label="Alternar tema">
+            <!-- Sol (dark mode ativo) -->
+            <svg class="icon-sun" viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="12" r="5"/>
+                <line x1="12" y1="1" x2="12" y2="3"/>   <line x1="12" y1="21" x2="12" y2="23"/>
+                <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/> <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/>
+                <line x1="1" y1="12" x2="3" y2="12"/>   <line x1="21" y1="12" x2="23" y2="12"/>
+                <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/> <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>
+            </svg>
+            <!-- Lua (light mode ativo) -->
+            <svg class="icon-moon" viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+            </svg>
+        </button>
+        </div>{# /nav + toggle wrapper #}
+    </div>
+</header>
+{% endblock %}
+
+
+{% block content %}
+<div class="container">
+    <!-- MAPA -->
+    <div class="map-container">
+        <div id="leafletMap" class="leaflet-map"></div>
+    </div>{# /.map-container #}
+
+    <!-- SIDEBAR -->
+    <aside class="sidebar">
+        <div class="sidebar-header">
+            <div class="sidebar-title">Postos Próximos</div>
+            <div class="sidebar-subtitle">{{ postos|length }} postos encontrados nesta região</div>
+
+            <!-- FILTER CHIPS -->
+            <div class="filter-bar" id="filterBar">
+                <button class="chip" id="chipDisponivel" data-filter="disponivel">
+                    <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
+                        <polyline points="22 4 12 14.01 9 11.01"/>
+                    </svg>
+                    Só disponíveis
+                </button>
+                <button class="chip" id="chipDistancia" data-filter="distancia">
+                    <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="12" cy="12" r="10"/>
+                        <polyline points="12 6 12 12 16 14"/>
+                    </svg>
+                    Por distância
+                </button>
+                <button class="chip" id="chipAssinante" data-filter="assinante">
+                    <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+                    </svg>
+                    Assinantes
+                </button>
+            </div>
+        </div>
+
+        <div class="station-list" id="stationList">
+            {% for id, posto in postos.items() %}
+                <a href="{{ url_for('posto', posto_id=posto.id) }}"
+                   class="station-card {% if not posto.disponivel %}indisponivel{% endif %}"
+                   data-posto-id="{{ posto.id }}"
+                   data-disponivel="{{ 'true' if posto.disponivel else 'false' }}"
+                   data-distancia="{{ posto.distancia.split(' ')[0] }}"
+                   data-vip-livre="{{ 'true' if posto.vip_livre is defined and posto.vip_livre else 'false' }}">
+
+                <div class="station-header">
+                    <div class="station-name">
+                        {{ posto.nome }}
+                        {% if posto.em_throttle %}
+                        <span class="throttle-badge">⚡ Throttle ativo</span>
+                        {% endif %}
+                    </div>
+                    <span class="station-status {% if not posto.disponivel %}indisponivel{% elif posto.em_throttle %}throttle{% else %}disponivel{% endif %}">
+                        {% if not posto.disponivel %}Lotado{% elif posto.em_throttle %}Demanda alta{% else %}Disponível{% endif %}
+                    </span>
+                </div>
+
+                <div class="station-address">
+                    <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/>
+                        <circle cx="12" cy="10" r="3"/>
+                    </svg>
+                    <span>{{ posto.endereco }}</span>
+                </div>
+
+                <div class="station-info">
+                    <div class="station-detail">
+                        <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
+                        </svg>
+                        <span>{{ posto.distancia }}</span>
+                    </div>
+                    <div class="station-detail {% if posto.disponivel %}available{% endif %}">
+                        <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>
+                        </svg>
+                        <span>{{ posto.carregadores_livres }}/{{ posto.total_carregadores }} livres</span>
+                    </div>
+                </div>
+
+                </a>
+            {% endfor %}
+        </div>
+
+        <div class="legend">
+            <div class="legend-title">Legenda</div>
+            <div class="legend-items">
+                <div class="legend-item">
+                    <svg class="legend-pin" viewBox="0 0 44 56" fill="none">
+                        <path d="M22 0C9.85 0 0 9.85 0 22C0 38.5 22 56 22 56C22 56 44 38.5 44 22C44 9.85 34.15 0 22 0Z" fill="#10B981"/>
+                        <circle cx="22" cy="22" r="14" fill="white"/>
+                        <path d="M23 12L15 23H21L19 30L27 19H21L23 12Z" fill="#10B981"/>
+                    </svg>
+                    <span>Posto com carregadores disponíveis</span>
+                </div>
+                <div class="legend-item">
+                    <svg class="legend-pin" viewBox="0 0 44 56" fill="none">
+                        <path d="M22 0C9.85 0 0 9.85 0 22C0 38.5 22 56 22 56C22 56 44 38.5 44 22C44 9.85 34.15 0 22 0Z" fill="#9CA3AF"/>
+                        <circle cx="22" cy="22" r="14" fill="white"/>
+                        <path d="M17 17L27 27M27 17L17 27" stroke="#9CA3AF" stroke-width="2.5" stroke-linecap="round"/>
+                    </svg>
+                    <span>Posto sem carregadores disponíveis</span>
+                </div>
+            </div>
+        </div>
+    </aside>
+</div>
+{% endblock %}
+
+
+{% block scripts %}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"
+        crossorigin="" referrerpolicy="no-referrer"></script>
+<script>
+(function () {
+'use strict';
+
+/* Fallback: se o Leaflet nao carregou (sem internet), mostra aviso e usa
+   a lista lateral como navegacao principal — a pagina nao quebra. */
+if (typeof L === 'undefined') {
+    var el = document.getElementById('leafletMap');
+    if (el) {
+        el.innerHTML =
+            '<div style="display:flex;flex-direction:column;align-items:center;' +
+            'justify-content:center;height:100%;min-height:600px;padding:32px;' +
+            'text-align:center;color:var(--cor-texto-secundario);gap:12px;">' +
+            '<div style="font-size:2rem;">\uD83D\uDDFA\uFE0F</div>' +
+            '<div style="font-weight:700;color:var(--cor-texto);">Mapa indispon\u00edvel offline</div>' +
+            '<div style="font-size:0.85rem;max-width:340px;">O mapa interativo precisa de conex\u00e3o com a internet. ' +
+            'Use a lista de postos ao lado para navegar at\u00e9 os carregadores.</div>' +
+            '</div>';
+    }
+    return;
+}
+
+/* ====================================================================
+   Dados dos postos (vindos do backend)
+   ==================================================================== */
+var POSTOS = [
+{% for id, posto in postos.items() %}
+  {
+    id:         '{{ posto.id }}',
+    nome:       '{{ posto.nome }}',
+    endereco:   '{{ posto.endereco }}',
+    lat:        {{ posto.lat }},
+    lng:        {{ posto.lng }},
+    disponivel: {{ 'true' if posto.disponivel else 'false' }},
+    throttle:   {{ 'true' if posto.em_throttle else 'false' }},
+    livres:     {{ posto.carregadores_livres }},
+    total:      {{ posto.total_carregadores }},
+    distancia:  '{{ posto.distancia }}',
+    vipLivre:   {{ 'true' if posto.vip_livre is defined and posto.vip_livre else 'false' }},
+    url:        '{{ url_for('posto', posto_id=posto.id) }}'
+  },
+{% endfor %}
+];
+
+/* Coordenada central aproximada dos três postos (zona sul/centro de SP) */
+var CENTRO_SP = [-23.5860, -46.6770];
+
+/* ====================================================================
+   1. Inicializa o mapa Leaflet
+   ==================================================================== */
+var map = L.map('leafletMap', {
+    center: CENTRO_SP,
+    zoom: 13,
+    scrollWheelZoom: true,
+    zoomControl: true
+});
+
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    maxZoom: 19,
+    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+}).addTo(map);
+
+/* ====================================================================
+   2. Marcador customizado (gota colorida por status)
+   Vermelho = lotado; Laranja = throttle (com vaga); Verde = disponivel
+   ==================================================================== */
+function corStatus(p) {
+    if (!p.disponivel) return '#EF4444';   // lotado
+    if (p.throttle)    return '#F59E0B';    // throttle com vaga
+    return '#10B981';                       // disponivel
+}
+
+function iconeInterno(p) {
+    if (!p.disponivel) {
+        // barras (lotado)
+        return '<path d="M16 16h12v2H16zm0 4h12v2H16zm0 4h8v2h-8z" fill="' + corStatus(p) + '"/>';
+    }
+    // raio (disponivel / throttle)
+    return '<path d="M23 12L15 23H21L19 30L27 19H21L23 12Z" fill="' + corStatus(p) + '"/>';
+}
+
+function svgGota(p) {
+    var cor = corStatus(p);
+    var bolt = p.throttle ? '<div class="cg-bolt">\u26A1</div>' : '';
+    return ''
+      + '<div style="position:relative;width:44px;height:56px;">'
+      + bolt
+      + '<svg width="44" height="56" viewBox="0 0 44 56" fill="none">'
+      +   '<path d="M22 0C9.85 0 0 9.85 0 22C0 38.5 22 56 22 56C22 56 44 38.5 44 22C44 9.85 34.15 0 22 0Z" fill="' + cor + '"/>'
+      +   '<circle cx="22" cy="22" r="14" fill="white"/>'
+      +   iconeInterno(p)
+      + '</svg>'
+      + '</div>';
+}
+
+function statusClasse(p) {
+    if (!p.disponivel) return 'indisponivel';
+    if (p.throttle)    return 'throttle';
+    return 'disponivel';
+}
+
+function statusTexto(p) {
+    if (!p.disponivel) return 'Lotado (100% ocupado)';
+    if (p.throttle)    return 'Demanda alta \u2014 controle din\u00e2mico ativo';
+    return p.livres + ' conector(es) livre(s)';
+}
+
+/* ====================================================================
+   3. Cria os marcadores e guarda referencias para os filtros
+   ==================================================================== */
+var marcadores = {};   // id -> { marker, posto }
+
+POSTOS.forEach(function (p) {
+    var icon = L.divIcon({
+        className: 'cg-marker',
+        html: svgGota(p),
+        iconSize: [44, 56],
+        iconAnchor: [22, 56],
+        popupAnchor: [0, -52]
+    });
+
+    var marker = L.marker([p.lat, p.lng], { icon: icon }).addTo(map);
+
+    var popupHtml = ''
+      + '<div class="cg-popup-nome">' + p.nome + '</div>'
+      + '<div class="cg-popup-end">' + p.endereco + '</div>'
+      + '<div class="cg-popup-status ' + statusClasse(p) + '">' + statusTexto(p) + '</div>'
+      + '<a class="cg-popup-btn" href="' + p.url + '">Ver carregadores</a>';
+    marker.bindPopup(popupHtml);
+
+    marcadores[p.id] = { marker: marker, posto: p };
+});
+
+/* Marcador "Voce esta aqui" (centro aproximado) */
+L.circleMarker(CENTRO_SP, {
+    radius: 8, color: '#2563EB', fillColor: '#2563EB', fillOpacity: 0.9, weight: 3
+}).addTo(map).bindPopup('Voc\u00ea est\u00e1 aqui');
+
+/* Ajusta o zoom para enquadrar todos os postos */
+var grupo = L.featureGroup(
+    POSTOS.map(function (p) { return marcadores[p.id].marker; })
+);
+map.fitBounds(grupo.getBounds().pad(0.35));
+
+/* Garante render correto apos o layout estabilizar */
+setTimeout(function () { map.invalidateSize(); }, 200);
+
+/* ====================================================================
+   4. FILTER CHIPS — mostram/escondem cards e marcadores
+   ==================================================================== */
+var filters = { disponivel: false, distancia: false, assinante: false };
+
+var chips = {
+    disponivel: document.getElementById('chipDisponivel'),
+    distancia:  document.getElementById('chipDistancia'),
+    assinante:  document.getElementById('chipAssinante')
+};
+
+var stationList = document.getElementById('stationList');
+
+/* Recria o icone de um marcador. Quando forcarIndisponivel=true, desenha a
+   gota com a aparencia de "indisponivel" sem remover o posto do mapa
+   (usado pelo filtro de assinante em postos sem o conector C5 livre). */
+function aplicarIconeMarcador(p, forcarIndisponivel) {
+    var ref = marcadores[p.id];
+    var dados = forcarIndisponivel
+        ? Object.assign({}, p, { disponivel: false, throttle: false })
+        : p;
+    ref.marker.setIcon(L.divIcon({
+        className: 'cg-marker',
+        html: svgGota(dados),
+        iconSize: [44, 56],
+        iconAnchor: [22, 56],
+        popupAnchor: [0, -52]
+    }));
+}
+
+function applyFilters() {
+    var cards = Array.from(stationList.querySelectorAll('.station-card'));
+
+    /* ---- cards da sidebar ---- */
+    cards.forEach(function (card) {
+        /* "So disponiveis" continua escondendo postos lotados */
+        var esconder = filters.disponivel && card.dataset.disponivel !== 'true';
+        card.classList.toggle('filtered-out', esconder);
+
+        /* "Assinantes": NAO esconde. Marca como indisponivel os postos cujo
+           conector VIP (C5) nao esta livre — eles permanecem visiveis. */
+        var vipBloqueado = filters.assinante && card.dataset.vipLivre !== 'true';
+        card.classList.toggle('vip-bloqueado', vipBloqueado);
+    });
+
+    /* ---- marcadores do mapa ---- */
+    POSTOS.forEach(function (p) {
+        var ref = marcadores[p.id];
+
+        /* esconder apenas quando "So disponiveis" e o posto esta lotado */
+        var esconder = filters.disponivel && !p.disponivel;
+        if (esconder) {
+            if (map.hasLayer(ref.marker)) map.removeLayer(ref.marker);
+            return;
+        }
+        if (!map.hasLayer(ref.marker)) ref.marker.addTo(map);
+
+        /* filtro de assinante: posto sem C5 livre vira marcador indisponivel
+           (mas continua no mapa); com C5 livre fica na cor normal */
+        var forcarIndisponivel = filters.assinante && !p.vipLivre;
+        aplicarIconeMarcador(p, forcarIndisponivel);
+    });
+
+    /* ordenar por distancia */
+    if (filters.distancia) {
+        cards.sort(function (a, b) {
+            return parseFloat(a.dataset.distancia) - parseFloat(b.dataset.distancia);
+        });
+        cards.forEach(function (card) { stationList.appendChild(card); });
+    } else {
+        cards.slice().sort(function (a, b) {
+            return a.dataset.postoId < b.dataset.postoId ? -1 : 1;
+        }).forEach(function (card) { stationList.appendChild(card); });
+    }
+
+    /* contador */
+    var visiveis = cards.filter(function (c) {
+        return !c.classList.contains('filtered-out');
+    }).length;
+    var sub = document.querySelector('.sidebar-subtitle');
+    if (sub) {
+        sub.textContent = visiveis + ' posto' + (visiveis !== 1 ? 's' : '') +
+                          ' encontrado' + (visiveis !== 1 ? 's' : '') + ' nesta regi\u00e3o';
+    }
+}
+
+Object.keys(chips).forEach(function (key) {
+    if (!chips[key]) return;
+    chips[key].addEventListener('click', function () {
+        filters[key] = !filters[key];
+        chips[key].classList.toggle('active', filters[key]);
+        applyFilters();
+    });
+});
+
+/* ====================================================================
+   5. Clique no card da sidebar -> foca o marcador no mapa
+   ==================================================================== */
+Array.from(stationList.querySelectorAll('.station-card')).forEach(function (card) {
+    card.addEventListener('mouseenter', function () {
+        var id = card.dataset.postoId;
+        var ref = marcadores[id];
+        if (ref && map.hasLayer(ref.marker)) {
+            ref.marker.openPopup();
+        }
+    });
+});
+
+}());
+</script>
+{% endblock %}

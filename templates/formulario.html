@@ -1,0 +1,1101 @@
+{% extends "base.html" %}
+
+{% block title %}Nova Sessão — {{ carregador.nome }} — {{ posto.nome }}{% endblock %}
+
+{% block extra_css %}
+<style>
+/* ====================================================================
+   LAYOUT
+   ==================================================================== */
+.container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 24px;
+    display: grid;
+    grid-template-columns: 1fr 380px;
+    gap: 24px;
+}
+
+/* ====================================================================
+   FORMULÁRIO
+   ==================================================================== */
+.form-card {
+    background: var(--cor-card);
+    border-radius: 12px;
+    padding: 28px;
+    box-shadow: var(--sombra-sm);
+    border: 1px solid var(--cor-borda);
+}
+
+.form-section-title {
+    font-size: 1rem; font-weight: 700; color: var(--cor-texto);
+    margin-bottom: 4px; display: flex; align-items: center; gap: 8px;
+}
+.form-section-title svg { width: 18px; height: 18px; stroke: var(--cor-primaria); }
+
+.form-section-subtitle { font-size: 0.85rem; color: var(--cor-texto-secundario); margin-bottom: 24px; }
+
+.form-group { margin-bottom: 20px; }
+
+label {
+    display: block; margin-bottom: 8px;
+    font-weight: 600; color: var(--cor-texto); font-size: 0.9rem;
+}
+
+input[type="text"],
+input[type="number"],
+select {
+    width: 100%;
+    padding: 11px 14px;
+    border: 1.5px solid var(--cor-input-border);
+    border-radius: 8px;
+    font-size: 0.95rem;
+    transition: border-color 0.2s, box-shadow 0.2s, background-color 0.28s;
+    font-family: inherit;
+    background: var(--cor-input-bg);
+    color: var(--cor-texto);
+    /* Força o estilo do select arrow para dark mode nativo */
+    color-scheme: inherit;
+}
+
+input:focus, select:focus {
+    outline: none;
+    border-color: var(--cor-primaria);
+    box-shadow: 0 0 0 3px rgba(192,0,0,0.12);
+}
+
+/* Hover sutil nos campos */
+input:not(:focus):hover, select:not(:focus):hover {
+    border-color: var(--cor-texto-secundario);
+}
+
+.input-hint { font-size: 0.8rem; color: var(--cor-texto-secundario); margin-top: 6px; display: block; }
+.input-hint-vip { color: var(--cor-aviso-dark); font-weight: 600; }
+
+.time-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+
+/* ====================================================================
+   AVISO DE PICO
+   ==================================================================== */
+.warning-box {
+    background: var(--cor-aviso-bg);
+    border-left: 4px solid var(--cor-aviso);
+    padding: 16px;
+    border-radius: 8px;
+    margin: 20px 0;
+    display: none;
+    align-items: flex-start;
+    gap: 12px;
+}
+
+.warning-box.show {
+    display: flex;
+    animation: fadeInSlide 0.32s ease;
+}
+
+@keyframes fadeInSlide {
+    from { opacity: 0; transform: translateY(-8px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+
+.warning-box svg { width: 22px; height: 22px; stroke: var(--cor-aviso-dark); flex-shrink: 0; margin-top: 1px; }
+.warning-box-content { flex: 1; }
+.warning-box h3 { color: var(--cor-aviso-dark); font-size: 0.9rem; margin-bottom: 6px; font-weight: 700; }
+.warning-box p  { color: #78350F; font-size: 0.85rem; line-height: 1.5; }
+[data-theme="dark"] .warning-box p { color: #FDE68A; }
+
+/* ====================================================================
+   BOTÃO SUBMIT
+   ==================================================================== */
+.btn-submit {
+    width: 100%; padding: 14px 24px;
+    background: var(--cor-primaria); color: white;
+    border: none; border-radius: 8px;
+    font-size: 1rem; font-weight: 600; cursor: pointer;
+    transition: all 0.2s ease; margin-top: 8px;
+    display: flex; align-items: center; justify-content: center; gap: 8px;
+    font-family: inherit;
+}
+.btn-submit svg { width: 18px; height: 18px; stroke: white; }
+.btn-submit:hover:not(:disabled) {
+    background: var(--cor-primaria-dark);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 14px rgba(192,0,0,0.35);
+}
+.btn-submit:active:not(:disabled) { transform: translateY(0); }
+.btn-submit:disabled { opacity: 0.75; cursor: not-allowed; transform: none; }
+
+/* ====================================================================
+   SIDEBAR
+   ==================================================================== */
+.sidebar { display: flex; flex-direction: column; gap: 16px; }
+
+.charger-info-card {
+    background: var(--cor-card);
+    border-radius: 12px;
+    padding: 20px;
+    box-shadow: var(--sombra-sm);
+    border: 1px solid var(--cor-borda);
+}
+
+.charger-info-header {
+    display: flex; align-items: center; gap: 12px;
+    margin-bottom: 16px; padding-bottom: 16px;
+    border-bottom: 1px solid var(--cor-borda);
+}
+
+.charger-info-icon {
+    width: 44px; height: 44px;
+    background: linear-gradient(135deg, var(--cor-livre) 0%, var(--cor-livre-dark) 100%);
+    border-radius: 10px; display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0; transition: transform 0.2s;
+}
+.charger-info-icon.vip { background: linear-gradient(135deg, var(--cor-vip) 0%, var(--cor-vip-dark) 100%); }
+.charger-info-icon svg { width: 22px; height: 22px; stroke: white; fill: none; stroke-width: 2; }
+.charger-info-card:hover .charger-info-icon { transform: scale(1.06) rotate(-3deg); }
+
+.charger-info-title h3 { font-size: 1rem; font-weight: 700; color: var(--cor-texto); line-height: 1.2; }
+.charger-info-title p  { font-size: 0.8rem; color: var(--cor-texto-secundario); }
+
+.info-list { display: flex; flex-direction: column; gap: 10px; }
+.info-list-row { display: flex; justify-content: space-between; align-items: center; font-size: 0.85rem; }
+.info-list-label { color: var(--cor-texto-secundario); display: flex; align-items: center; gap: 6px; }
+.info-list-label svg { width: 14px; height: 14px; stroke: var(--cor-texto-secundario); }
+.info-list-value { font-weight: 600; color: var(--cor-texto); }
+
+/* ====================================================================
+   COST PREVIEW (card escuro)
+   ==================================================================== */
+.cost-preview {
+    background: linear-gradient(135deg, var(--cor-dark-card-1) 0%, var(--cor-dark-card-2) 100%);
+    color: white;
+    border-radius: 12px;
+    padding: 24px;
+    box-shadow: var(--sombra-md);
+    position: relative;
+    overflow: hidden;
+}
+
+.cost-preview::before {
+    content: '';
+    position: absolute; top: -50%; right: -50%;
+    width: 200%; height: 200%;
+    background: radial-gradient(circle, rgba(192,0,0,0.15) 0%, transparent 50%);
+    pointer-events: none;
+}
+
+.cost-preview-header { display: flex; align-items: center; gap: 10px; margin-bottom: 16px; position: relative; }
+.cost-preview-header svg { width: 20px; height: 20px; stroke: var(--cor-livre); }
+.cost-preview-title { font-size: 0.85rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; opacity: 0.85; }
+
+.cost-preview-amount { font-size: 2.2rem; font-weight: 800; color: var(--cor-livre); margin-bottom: 4px; line-height: 1; position: relative; }
+.cost-preview-amount.peak { color: var(--cor-aviso); }
+.cost-preview-label  { font-size: 0.8rem; opacity: 0.7; margin-bottom: 16px; position: relative; }
+
+.cost-breakdown {
+    display: flex; flex-direction: column; gap: 8px;
+    padding-top: 16px; border-top: 1px solid rgba(255,255,255,0.1);
+    position: relative;
+}
+.cost-breakdown-row { display: flex; justify-content: space-between; align-items: center; font-size: 0.85rem; }
+.cost-breakdown-label { opacity: 0.7; }
+.cost-breakdown-value { font-weight: 600; }
+.cost-breakdown-value.highlight  { color: var(--cor-livre); }
+.cost-breakdown-value.peak-text  { color: var(--cor-aviso); }
+
+/* ====================================================================
+   DURAÇÃO — slider + input sincronizados
+   ==================================================================== */
+.duration-input-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 12px;
+}
+.duration-input-row input[type="number"] {
+    width: 90px;
+    flex-shrink: 0;
+    font-size: 1.05rem;
+    font-weight: 700;
+    text-align: center;
+}
+.duration-unit {
+    font-size: 0.9rem;
+    color: var(--cor-texto-secundario);
+    font-weight: 500;
+}
+
+/* Range slider — cross-browser */
+.duration-slider {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 100%;
+    height: 6px;
+    border-radius: 99px;
+    background: var(--cor-borda);
+    outline: none;
+    cursor: pointer;
+    position: relative;
+    margin-bottom: 6px;
+    /* fill esquerdo via JS com background-image */
+}
+.duration-slider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 20px; height: 20px;
+    border-radius: 50%;
+    background: var(--cor-primaria);
+    cursor: pointer;
+    border: 3px solid white;
+    box-shadow: 0 2px 6px rgba(192,0,0,0.35);
+    transition: transform 0.15s ease;
+}
+.duration-slider::-moz-range-thumb {
+    width: 20px; height: 20px;
+    border-radius: 50%;
+    background: var(--cor-primaria);
+    cursor: pointer;
+    border: 3px solid white;
+    box-shadow: 0 2px 6px rgba(192,0,0,0.35);
+}
+.duration-slider:hover::-webkit-slider-thumb { transform: scale(1.18); }
+
+.slider-markers {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.7rem;
+    color: var(--cor-texto-secundario);
+    margin-top: 2px;
+    margin-bottom: 14px;
+    padding: 0 2px;
+}
+
+/* Quick-charge buttons */
+.quick-charge-label {
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--cor-texto-secundario);
+    font-weight: 600;
+    margin-bottom: 8px;
+}
+.quick-charge-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 4px;
+}
+.qc-btn {
+    padding: 7px 14px;
+    border-radius: 99px;
+    border: 1.5px solid var(--cor-borda);
+    background: var(--cor-card);
+    color: var(--cor-texto-secundario);
+    font-size: 0.8rem;
+    font-weight: 600;
+    cursor: pointer;
+    font-family: inherit;
+    transition: all 0.15s ease;
+    white-space: nowrap;
+    position: relative;
+    overflow: hidden;
+}
+.qc-btn:hover {
+    border-color: var(--cor-primaria);
+    color: var(--cor-primaria);
+    background: rgba(192,0,0,0.04);
+}
+.qc-btn.active {
+    background: var(--cor-primaria);
+    border-color: var(--cor-primaria);
+    color: white;
+    box-shadow: 0 2px 8px rgba(192,0,0,0.25);
+}
+
+/* ====================================================================
+   LOADING OVERLAY — animação de carregamento do EV
+   ==================================================================== */
+.loading-overlay {
+    position: fixed;
+    inset: 0;
+    background: var(--cor-fundo);
+    z-index: 99998;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.25s ease;
+}
+.loading-overlay.visible {
+    opacity: 1;
+    pointer-events: all;
+}
+
+.loading-card {
+    background: var(--cor-card);
+    border-radius: 20px;
+    padding: 40px 44px;
+    max-width: 420px;
+    width: 90%;
+    box-shadow: var(--sombra-lg);
+    border: 1px solid var(--cor-borda);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    transform: translateY(12px);
+    transition: transform 0.3s cubic-bezier(0.22,1,0.36,1);
+}
+.loading-overlay.visible .loading-card {
+    transform: translateY(0);
+}
+
+.loading-bolt-icon {
+    width: 52px; height: 52px;
+    background: linear-gradient(135deg, var(--cor-primaria), #FF6B6B);
+    border-radius: 14px;
+    display: flex; align-items: center; justify-content: center;
+    margin-bottom: 18px;
+    animation: boltPop 0.5s cubic-bezier(0.34,1.56,0.64,1) both;
+}
+@keyframes boltPop {
+    from { transform: scale(0.4) rotate(-15deg); opacity: 0; }
+    to   { transform: scale(1)   rotate(0deg);   opacity: 1; }
+}
+.loading-bolt-icon svg { width: 28px; height: 28px; stroke: white; stroke-width: 2; }
+
+.loading-title {
+    font-size: 1.15rem;
+    font-weight: 800;
+    color: var(--cor-texto);
+    margin-bottom: 6px;
+}
+.loading-subtitle {
+    font-size: 0.85rem;
+    color: var(--cor-texto-secundario);
+    margin-bottom: 28px;
+    min-height: 20px;
+    transition: opacity 0.2s ease;
+}
+
+/* Barra de carregamento do EV */
+.ev-bar-wrapper {
+    width: 100%;
+    margin-bottom: 24px;
+}
+.ev-bar-labels {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.72rem;
+    color: var(--cor-texto-secundario);
+    margin-bottom: 6px;
+}
+.ev-bar-track {
+    position: relative;
+    width: 100%;
+    height: 10px;
+    background: var(--cor-borda);
+    border-radius: 99px;
+    overflow: visible;
+}
+.ev-bar-fill {
+    height: 100%;
+    border-radius: 99px;
+    background: linear-gradient(90deg, var(--cor-primaria), #FF6B6B);
+    width: 0%;
+    transition: width 0.55s cubic-bezier(0.4,0,0.2,1);
+    position: relative;
+}
+/* Brilho na ponta da barra */
+.ev-bar-fill::after {
+    content: '';
+    position: absolute;
+    right: -1px; top: -3px;
+    width: 16px; height: 16px;
+    background: white;
+    border: 3px solid var(--cor-primaria);
+    border-radius: 50%;
+    box-shadow: 0 0 0 3px rgba(192,0,0,0.2);
+    transition: opacity 0.2s;
+}
+
+/* Percentual */
+.ev-bar-pct {
+    font-size: 0.78rem;
+    font-weight: 700;
+    color: var(--cor-primaria);
+    text-align: right;
+    margin-top: 5px;
+    letter-spacing: 0.04em;
+    transition: opacity 0.2s ease;
+}
+
+/* Steps de carregamento */
+.loading-steps {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+.loading-step {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 0.84rem;
+    color: var(--cor-texto-secundario);
+    padding: 8px 12px;
+    border-radius: 8px;
+    border: 1px solid transparent;
+    transition: all 0.25s ease;
+}
+.loading-step-icon {
+    width: 18px; height: 18px;
+    border-radius: 50%;
+    border: 2px solid var(--cor-borda);
+    flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center;
+    transition: all 0.25s ease;
+}
+.loading-step-icon svg { width: 10px; height: 10px; opacity: 0; transition: opacity 0.2s; }
+
+.loading-step.done {
+    color: var(--cor-texto);
+    background: rgba(16,185,129,0.07);
+    border-color: rgba(16,185,129,0.2);
+}
+.loading-step.done .loading-step-icon {
+    background: var(--cor-livre);
+    border-color: var(--cor-livre);
+}
+.loading-step.done .loading-step-icon svg { opacity: 1; stroke: white; }
+
+.loading-step.active {
+    color: var(--cor-texto);
+    background: rgba(192,0,0,0.05);
+    border-color: rgba(192,0,0,0.15);
+}
+.loading-step.active .loading-step-icon {
+    border-color: var(--cor-primaria);
+    animation: stepPulse 1s ease infinite;
+}
+@keyframes stepPulse {
+    0%,100% { box-shadow: 0 0 0 0 rgba(192,0,0,0.3); }
+    50%      { box-shadow: 0 0 0 5px rgba(192,0,0,0);  }
+}
+
+/* ====================================================================
+   SKELETON no cost-preview durante submit
+   ==================================================================== */
+.cost-preview-skeleton {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    position: relative;
+    z-index: 1;
+}
+.cost-preview-skeleton .sk-row { border-radius: 6px; }
+
+/* ====================================================================
+   RESPONSIVO
+   ==================================================================== */
+@media (max-width: 1024px) { .container { grid-template-columns: 1fr; } }
+@media (max-width: 640px) {
+    .container { padding: 16px; }
+    .form-card  { padding: 20px; }
+    .header h1  { font-size: 1.1rem; }
+}
+</style>
+{% endblock %}
+
+
+{% block header %}
+<header class="header">
+    <div class="header-content">
+        <a href="{{ url_for('posto', posto_id=posto.id) }}" class="back-button" title="Voltar">
+            <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/>
+            </svg>
+        </a>
+        <div class="header-info">
+            <h1>Nova Sessão de Recarga</h1>
+            <div class="header-subtitle">{{ carregador.nome }} · {{ posto.nome }}</div>
+        </div>
+        <button class="theme-toggle" title="Alternar tema" aria-label="Alternar tema">
+            <svg class="icon-sun" viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="12" r="5"/>
+                <line x1="12" y1="1" x2="12" y2="3"/>    <line x1="12" y1="21" x2="12" y2="23"/>
+                <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/> <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/>
+                <line x1="1" y1="12" x2="3" y2="12"/>    <line x1="21" y1="12" x2="23" y2="12"/>
+                <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/> <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>
+            </svg>
+            <svg class="icon-moon" viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+            </svg>
+        </button>
+    </div>
+</header>
+{% endblock %}
+
+
+{% block content %}
+<div class="container">
+    <!-- FORMULÁRIO -->
+    <div class="form-card">
+        <div class="form-section-title">
+            <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                <polyline points="14 2 14 8 20 8"/>
+            </svg>
+            Dados da Sessão
+        </div>
+        <div class="form-section-subtitle">Preencha os dados abaixo para iniciar sua recarga</div>
+
+        {# Aviso quando o posto está sob controle dinâmico de carga #}
+        {% if posto_em_throttle %}
+        <div style="background:rgba(245,158,11,0.1);border:1px solid rgba(245,158,11,0.4);border-radius:10px;padding:14px 16px;margin-bottom:20px;display:flex;align-items:flex-start;gap:12px;font-size:0.85rem;color:var(--cor-texto);">
+            <svg viewBox="0 0 24 24" fill="none" stroke="#D97706" stroke-width="2" width="22" height="22" stroke-linecap="round" style="flex-shrink:0;margin-top:1px;"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+            <div>
+                <strong style="display:block;margin-bottom:3px;">⚡ Controle dinâmico de carga ativo neste posto</strong>
+                Este posto está operando com alta demanda. A potência da sua sessão poderá ser <strong>redistribuída automaticamente</strong> para proteger o disjuntor principal (GoodWe GW11K-HCA-20 · registrador Modbus 10025). A tarifa aplicada pode incluir o <strong>multiplicador de demanda (+30%)</strong> por causa da ocupação atual da rede.
+            </div>
+        </div>
+        {% endif %}
+
+        <form method="POST" action="{{ url_for('processar') }}" id="sessionForm">
+            <input type="hidden" name="posto_id"      value="{{ posto.id }}">
+            <input type="hidden" name="carregador_id" value="{{ carregador.id }}">
+
+            <div class="form-group">
+                <label for="nome">Nome do Usuário</label>
+                <input type="text" id="nome" name="nome" placeholder="Digite seu nome (opcional)">
+                <span class="input-hint">Deixe em branco para registrar como anônimo</span>
+            </div>
+
+            <div class="form-group">
+                <label for="placa">Placa do Veículo <span style="color:var(--cor-primaria);">*</span></label>
+                <input type="text" id="placa" name="placa"
+                       placeholder="Ex: ABC-1234"
+                       maxlength="8"
+                       pattern="[A-Za-z]{3}-?[0-9A-Za-z]{4}"
+                       required
+                       style="text-transform:uppercase;"
+                       oninput="this.value=this.value.toUpperCase()">
+                <span class="input-hint">Identificação do veículo elétrico para o registro da sessão</span>
+            </div>
+
+            <div class="form-group">
+                <label for="tipo">Tipo de Usuário</label>
+                <select id="tipo" name="tipo" required>
+                    <option value="P">Usuário Padrão</option>
+                    <option value="A" {% if carregador.tipo == 'assinante' %}selected{% endif %}>
+                        Assinante (15% de desconto)
+                    </option>
+                    <option value="C">Corporativo (10% de desconto)</option>
+                </select>
+                {% if carregador.tipo == 'assinante' %}
+                <span class="input-hint input-hint-vip">Este carregador é exclusivo para assinantes</span>
+                {% endif %}
+            </div>
+
+            <div class="form-group">
+                <label>Horário de Início (formato 24h)</label>
+                <div class="time-grid">
+                    <div>
+                        <select id="hora" name="hora" required>
+                            {% for h in range(24) %}
+                            <option value="{{ h }}" {% if h == 9 %}selected{% endif %}>{{ "%02d"|format(h) }}h</option>
+                            {% endfor %}
+                        </select>
+                        <span class="input-hint">Hora (00-23)</span>
+                    </div>
+                    <div>
+                        <select id="minuto" name="minuto" required>
+                            <option value="0"  selected>00 min</option>
+                            <option value="15">15 min</option>
+                            <option value="30">30 min</option>
+                            <option value="45">45 min</option>
+                        </select>
+                        <span class="input-hint">Minuto</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label for="duracao">Duração da Recarga</label>
+
+                <!-- Input numérico + slider sincronizados -->
+                <div class="duration-input-row">
+                    <input type="number" id="duracao" name="duracao"
+                           min="5" max="240" value="30" step="5" required>
+                    <span class="duration-unit">minutos</span>
+                </div>
+
+                <input type="range" id="duracaoSlider"
+                       min="5" max="240" value="30" step="5"
+                       class="duration-slider" aria-label="Duração em minutos">
+                <div class="slider-markers">
+                    <span>5 min</span><span>1h</span><span>2h</span><span>4h</span>
+                </div>
+
+                <!-- Quick-charge presets -->
+                <div class="quick-charge-label">Carregamento rápido</div>
+                <div class="quick-charge-grid" id="quickChargeGrid">
+                    <button type="button" class="qc-btn" data-min="15">15 min</button>
+                    <button type="button" class="qc-btn active" data-min="30">30 min</button>
+                    <button type="button" class="qc-btn" data-min="45">45 min</button>
+                    <button type="button" class="qc-btn" data-min="60">1 hora</button>
+                    <button type="button" class="qc-btn" data-min="120">2 horas</button>
+                </div>
+
+                <span class="input-hint">Entre 5 e 240 minutos · ajustado para múltiplos de 5</span>
+            </div>
+
+            <!-- Aviso de Pico -->
+            <div class="warning-box" id="peakWarning">
+                <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+                    <line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>
+                </svg>
+                <div class="warning-box-content">
+                    <h3>Sua sessão passa pelo horário de pico</h3>
+                    <p>O horário de pico (18:00–22:59) tem tarifa <strong>50% maior</strong>.
+                       A cobrança proporcional será aplicada apenas nos minutos dentro do pico.</p>
+                </div>
+            </div>
+
+            <button type="submit" class="btn-submit" id="submitBtn">
+                <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>
+                </svg>
+                Iniciar Sessão de Recarga
+            </button>
+        </form>
+    </div>
+
+    <!-- SIDEBAR -->
+    <aside class="sidebar">
+        <!-- Info do carregador -->
+        <div class="charger-info-card">
+            <div class="charger-info-header">
+                <div class="charger-info-icon {% if carregador.tipo == 'assinante' %}vip{% endif %}">
+                    {% if carregador.tipo == 'assinante' %}
+                        <svg viewBox="0 0 24 24" stroke-width="2">
+                            <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+                        </svg>
+                    {% else %}
+                        <svg viewBox="0 0 24 24">
+                            <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>
+                        </svg>
+                    {% endif %}
+                </div>
+                <div class="charger-info-title">
+                    <h3>{{ carregador.nome }}</h3>
+                    <p>{% if carregador.tipo == 'assinante' %}Exclusivo Assinantes{% else %}Carregador Público{% endif %}</p>
+                </div>
+            </div>
+
+            <div class="info-list">
+                <div class="info-list-row">
+                    <div class="info-list-label">
+                        <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <rect x="2" y="3" width="20" height="14" rx="2" ry="2"/>
+                            <line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/>
+                        </svg>
+                        Modelo
+                    </div>
+                    <div class="info-list-value">GoodWe GW11K-HCA-20</div>
+                </div>
+                <div class="info-list-row">
+                    <div class="info-list-label">
+                        <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>
+                        </svg>
+                        Potência
+                    </div>
+                    <div class="info-list-value">11 kW (AC)</div>
+                </div>
+                <div class="info-list-row">
+                    <div class="info-list-label">
+                        <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <line x1="12" y1="1" x2="12" y2="23"/>
+                            <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
+                        </svg>
+                        Tarifa base
+                    </div>
+                    <div class="info-list-value">R$ 1,20/kWh</div>
+                </div>
+                <div class="info-list-row">
+                    <div class="info-list-label">
+                        <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
+                        </svg>
+                        Pico
+                    </div>
+                    <div class="info-list-value">18h–22h59 (+50%)</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Preview de custo -->
+        <div class="cost-preview" id="costPreviewCard">
+            <div class="cost-preview-header">
+                <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <line x1="12" y1="1" x2="12" y2="23"/>
+                    <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
+                </svg>
+                <div class="cost-preview-title">Previsão de Custo</div>
+            </div>
+
+            <div class="cost-preview-amount" id="costAmount">R$ 0,00</div>
+            <div class="cost-preview-label"  id="costLabel">Estimativa baseada nos dados informados</div>
+
+            <div class="cost-breakdown">
+                <div class="cost-breakdown-row">
+                    <span class="cost-breakdown-label">Energia estimada</span>
+                    <span class="cost-breakdown-value" id="energiaValue">0,00 kWh</span>
+                </div>
+                <div class="cost-breakdown-row">
+                    <span class="cost-breakdown-label">Tarifa média</span>
+                    <span class="cost-breakdown-value highlight" id="tarifaValue">R$ 0,00/kWh</span>
+                </div>
+                <div class="cost-breakdown-row" id="picoRow" style="display:none">
+                    <span class="cost-breakdown-label">Inclui horário de pico</span>
+                    <span class="cost-breakdown-value peak-text">Sim (+50%)</span>
+                </div>
+                <div class="cost-breakdown-row" id="descontoRow" style="display:none">
+                    <span class="cost-breakdown-label">Desconto assinante</span>
+                    <span class="cost-breakdown-value highlight">-15%</span>
+                </div>
+            </div>
+        </div>
+    </aside>
+    <!-- OVERLAY DE LOADING — "processamento real" antes do relatório -->
+    <div class="loading-overlay" id="loadingOverlay" aria-hidden="true" role="status">
+        <div class="loading-card">
+            <div class="loading-bolt-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke-linecap="round" stroke-linejoin="round">
+                    <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>
+                </svg>
+            </div>
+
+            <div class="loading-title">Processando Sessão</div>
+            <div class="loading-subtitle" id="loadingSubtitle">Iniciando...</div>
+
+            <div class="ev-bar-wrapper">
+                <div class="ev-bar-labels">
+                    <span>0%</span>
+                    <span id="evBarPctLabel">0%</span>
+                </div>
+                <div class="ev-bar-track">
+                    <div class="ev-bar-fill" id="evBarFill"></div>
+                </div>
+                <div class="ev-bar-pct" id="evBarPct">0%</div>
+            </div>
+
+            <div class="loading-steps">
+                <div class="loading-step" id="lstep1">
+                    <div class="loading-step-icon">
+                        <svg viewBox="0 0 24 24" fill="none" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                            <polyline points="20 6 9 17 4 12"/>
+                        </svg>
+                    </div>
+                    <span>Validando dados da sessão</span>
+                </div>
+                <div class="loading-step" id="lstep2">
+                    <div class="loading-step-icon">
+                        <svg viewBox="0 0 24 24" fill="none" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                            <polyline points="20 6 9 17 4 12"/>
+                        </svg>
+                    </div>
+                    <span>Calculando tarifas e pico</span>
+                </div>
+                <div class="loading-step" id="lstep3">
+                    <div class="loading-step-icon">
+                        <svg viewBox="0 0 24 24" fill="none" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                            <polyline points="20 6 9 17 4 12"/>
+                        </svg>
+                    </div>
+                    <span>Gerando relatório</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+</div>{# /container #}
+{% endblock %}
+
+
+{% block scripts %}
+<script>
+'use strict';
+
+// ====================================================================
+// CONSTANTES (espelham logica_recarga.py — fonte única de verdade é o backend)
+// ====================================================================
+var TARIFA_BASE        = 1.20;
+var MULTIPLICADOR_PICO = 1.50;
+var DESCONTO_ASSINANTE = 0.15;
+var TAXA_MINIMA        = 2.00;
+var POTENCIA_KW        = 11.0;
+var TICK_MIN           = 5;
+var PICO_INICIO        = 18 * 60;
+var PICO_FIM           = 22 * 60 + 59;
+
+// ====================================================================
+// ELEMENTOS
+// ====================================================================
+var horaSelect      = document.getElementById('hora');
+var minutoSelect    = document.getElementById('minuto');
+var duracaoInput    = document.getElementById('duracao');
+var duracaoSlider   = document.getElementById('duracaoSlider');
+var tipoSelect      = document.getElementById('tipo');
+var peakWarning     = document.getElementById('peakWarning');
+var costAmount      = document.getElementById('costAmount');
+var costLabel       = document.getElementById('costLabel');
+var energiaValue    = document.getElementById('energiaValue');
+var tarifaValue     = document.getElementById('tarifaValue');
+var picoRow         = document.getElementById('picoRow');
+var descontoRow     = document.getElementById('descontoRow');
+var sessionForm     = document.getElementById('sessionForm');
+var submitBtn       = document.getElementById('submitBtn');
+var costPreviewCard = document.getElementById('costPreviewCard');
+
+// ====================================================================
+// SLIDER — sync bidirecional com input number + fill colorido
+// ====================================================================
+function sliderFill(val) {
+    var min = 5, max = 240;
+    var pct = ((val - min) / (max - min)) * 100;
+    duracaoSlider.style.backgroundImage =
+        'linear-gradient(to right, var(--cor-primaria) 0%, var(--cor-primaria) ' + pct + '%, var(--cor-borda) ' + pct + '%, var(--cor-borda) 100%)';
+}
+
+duracaoInput.addEventListener('input', function () {
+    var v = Math.min(240, Math.max(5, parseInt(this.value, 10) || 5));
+    duracaoSlider.value = v;
+    sliderFill(v);
+    syncQuickCharge(v);
+    atualizarPreview();
+});
+
+duracaoSlider.addEventListener('input', function () {
+    var v = parseInt(this.value, 10);
+    duracaoInput.value = v;
+    sliderFill(v);
+    syncQuickCharge(v);
+    atualizarPreview();
+});
+
+// Inicializa o fill do slider
+sliderFill(parseInt(duracaoSlider.value, 10));
+
+
+// ====================================================================
+// QUICK-CHARGE — botões de preset de duração
+// ====================================================================
+function syncQuickCharge(val) {
+    document.querySelectorAll('.qc-btn').forEach(function (btn) {
+        btn.classList.toggle('active', parseInt(btn.dataset.min, 10) === val);
+    });
+}
+
+document.querySelectorAll('.qc-btn').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+        var min = parseInt(btn.dataset.min, 10);
+        duracaoInput.value  = min;
+        duracaoSlider.value = min;
+        sliderFill(min);
+        syncQuickCharge(min);
+        atualizarPreview();
+    });
+
+    // Ripple nos botões QC
+    if (window.ChargeGrid && window.ChargeGrid.RippleEffect) {
+        window.ChargeGrid.RippleEffect.attach(btn);
+    }
+});
+
+
+// ====================================================================
+// CÁLCULO DE PREVISÃO (espelha simular_progresso_recarga do backend)
+// ====================================================================
+function isPico(totalMinutos) {
+    var m = totalMinutos % (24 * 60);
+    return m >= PICO_INICIO && m <= PICO_FIM;
+}
+
+function calcularPrevisao(hora, minuto, duracao, tipoUsuario) {
+    var duracaoAj = Math.max(TICK_MIN, Math.floor(duracao / TICK_MIN) * TICK_MIN);
+    var inicioMin = hora * 60 + minuto;
+    var energiaTotal = 0, custoTotal = 0, temPico = false;
+
+    for (var t = 0; t < duracaoAj; t += TICK_MIN) {
+        var tickMin = inicioMin + t;
+        var emPico  = isPico(tickMin);
+        if (emPico) temPico = true;
+        var tarifa  = TARIFA_BASE;
+        if (emPico)           tarifa *= MULTIPLICADOR_PICO;
+        if (tipoUsuario === 'A') tarifa *= (1 - DESCONTO_ASSINANTE);
+        var energia = POTENCIA_KW * (TICK_MIN / 60);
+        energiaTotal += energia;
+        custoTotal   += energia * tarifa;
+    }
+
+    var tarifaMedia     = energiaTotal > 0 ? custoTotal / energiaTotal : TARIFA_BASE;
+    var custoFinal      = Math.max(custoTotal, TAXA_MINIMA);
+    var taxaMinimaAplic = custoTotal < TAXA_MINIMA;
+
+    return { energia: energiaTotal, custo: custoFinal, tarifaMedia: tarifaMedia,
+             temPico: temPico, taxaMinimaAplic: taxaMinimaAplic, duracaoAj: duracaoAj };
+}
+
+function fmt(v) { return 'R$ ' + v.toFixed(2).replace('.', ','); }
+
+function atualizarPreview() {
+    var h = parseInt(horaSelect.value, 10);
+    var m = parseInt(minutoSelect.value, 10);
+    var d = parseInt(duracaoInput.value, 10) || 30;
+    var t = tipoSelect.value;
+    var r = calcularPrevisao(h, m, d, t);
+
+    costAmount.textContent = fmt(r.custo);
+    r.temPico ? costAmount.classList.add('peak') : costAmount.classList.remove('peak');
+    costLabel.textContent = r.taxaMinimaAplic
+        ? 'Taxa mínima aplicada (R$ 2,00)'
+        : 'Para ' + r.duracaoAj + ' min de recarga';
+    energiaValue.textContent = r.energia.toFixed(2).replace('.', ',') + ' kWh';
+    tarifaValue.textContent  = fmt(r.tarifaMedia) + '/kWh';
+    picoRow.style.display    = r.temPico ? 'flex' : 'none';
+    descontoRow.style.display = t === 'A' ? 'flex' : 'none';
+    r.temPico ? peakWarning.classList.add('show') : peakWarning.classList.remove('show');
+}
+
+[horaSelect, minutoSelect, tipoSelect].forEach(function (el) {
+    el.addEventListener('change', atualizarPreview);
+    el.addEventListener('input',  atualizarPreview);
+});
+
+
+// ====================================================================
+// LOADING OVERLAY — orquestrador da animação do "carro carregando"
+//
+// Sequência (total ~1 600ms):
+//   t =    0ms → overlay aparece, barra 0 %,  step1 active
+//   t =  120ms → barra vai para 28 %
+//   t =  550ms → barra vai para 62 %, step1 done, step2 active
+//   t = 1050ms → barra vai para 88 %, step2 done, step3 active
+//   t = 1450ms → barra vai para 100%,  step3 done
+//   t = 1600ms → form.submit() — página navega para o relatório
+// ====================================================================
+var overlay    = document.getElementById('loadingOverlay');
+var barFill    = document.getElementById('evBarFill');
+var barPct     = document.getElementById('evBarPct');
+var subtitle   = document.getElementById('loadingSubtitle');
+var lstep1     = document.getElementById('lstep1');
+var lstep2     = document.getElementById('lstep2');
+var lstep3     = document.getElementById('lstep3');
+
+function setBar(pct) {
+    barFill.style.width   = pct + '%';
+    barPct.textContent    = pct + '%';
+}
+
+function activateStep(el)    { el.classList.remove('done'); el.classList.add('active'); }
+function completeStep(el)    { el.classList.remove('active'); el.classList.add('done'); }
+
+function runLoadingSequence() {
+    overlay.setAttribute('aria-hidden', 'false');
+    overlay.classList.add('visible');
+
+    // t = 0 — step 1 ativo
+    activateStep(lstep1);
+    subtitle.textContent = 'Validando dados da sessão...';
+    requestAnimationFrame(function () {
+        requestAnimationFrame(function () { setBar(8); });
+    });
+
+    setTimeout(function () { setBar(28); }, 120);
+
+    setTimeout(function () {
+        completeStep(lstep1);
+        activateStep(lstep2);
+        subtitle.textContent = 'Calculando tarifas e horário de pico...';
+        setBar(62);
+    }, 550);
+
+    setTimeout(function () {
+        completeStep(lstep2);
+        activateStep(lstep3);
+        subtitle.textContent = 'Gerando relatório da sessão...';
+        setBar(88);
+    }, 1050);
+
+    setTimeout(function () {
+        completeStep(lstep3);
+        subtitle.textContent = 'Pronto!';
+        setBar(100);
+    }, 1450);
+
+    setTimeout(function () {
+        sessionForm.submit();
+    }, 1600);
+}
+
+
+// ====================================================================
+// SUBMIT — valida, mostra skeleton no preview, dispara overlay
+// ====================================================================
+sessionForm.addEventListener('submit', function (e) {
+
+    // Validação VIP
+    {% if carregador.tipo == 'assinante' %}
+    if (tipoSelect.value === 'P') {
+        e.preventDefault();
+        window.ChargeGrid.ToastSystem.show(
+            'Este carregador é exclusivo para <strong>Assinantes</strong>.<br>' +
+            'Selecione "Assinante" ou escolha outro carregador.',
+            'warning'
+        );
+        tipoSelect.focus();
+        tipoSelect.style.borderColor = 'var(--cor-aviso)';
+        tipoSelect.style.boxShadow   = '0 0 0 3px rgba(245,158,11,0.2)';
+        setTimeout(function () {
+            tipoSelect.style.borderColor = '';
+            tipoSelect.style.boxShadow   = '';
+        }, 2000);
+        return;
+    }
+    {% endif %}
+
+    e.preventDefault();
+
+    // Botão → estado de carregamento
+    submitBtn.disabled = true;
+    submitBtn.innerHTML =
+        '<span class="btn-spinner"></span>' +
+        '<span>Iniciando sessão...</span>';
+
+    // Skeleton no card de previsão (já existente)
+    costPreviewCard.innerHTML =
+        '<div style="position:relative;z-index:1;">' +
+        '  <div style="font-size:0.75rem;text-transform:uppercase;letter-spacing:0.05em;opacity:0.6;margin-bottom:14px;">Previsão de Custo</div>' +
+        '  <div class="skeleton-on-dark" style="height:38px;width:62%;margin-bottom:10px;"></div>' +
+        '  <div class="skeleton-on-dark" style="height:12px;width:48%;margin-bottom:24px;opacity:0.7;"></div>' +
+        '  <div style="border-top:1px solid rgba(255,255,255,0.08);padding-top:14px;display:flex;flex-direction:column;gap:10px;">' +
+        '    <div class="skeleton-on-dark" style="height:12px;width:80%;"></div>' +
+        '    <div class="skeleton-on-dark" style="height:12px;width:68%;"></div>' +
+        '  </div>' +
+        '</div>';
+
+    // Dispara o overlay de loading (sequência de ~1 600ms)
+    runLoadingSequence();
+});
+
+
+// ====================================================================
+// INIT
+// ====================================================================
+atualizarPreview();
+syncQuickCharge(parseInt(duracaoInput.value, 10));
+</script>
+{% endblock %}

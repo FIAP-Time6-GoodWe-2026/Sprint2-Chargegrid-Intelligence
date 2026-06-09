@@ -1,0 +1,386 @@
+{% extends "base.html" %}
+{% block title %}Testes Automatizados — ChargeGrid Intelligence{% endblock %}
+
+{% block extra_css %}
+<style>
+.container { max-width: 1000px; margin: 0 auto; padding: 24px; }
+.page-title { font-size: 1.4rem; font-weight: 700; color: var(--cor-texto); margin-bottom: 4px; }
+.page-sub   { font-size: 0.85rem; color: var(--cor-texto-secundario); margin-bottom: 24px; }
+
+/* ── CARDS DE SUITE ── */
+.suites-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 12px;
+    margin-bottom: 24px;
+}
+.suite-btn {
+    background: var(--cor-card);
+    border: 1px solid var(--cor-borda);
+    border-radius: 10px;
+    padding: 14px 16px;
+    cursor: pointer;
+    transition: border-color 0.2s, box-shadow 0.2s, transform 0.1s;
+    text-align: left;
+    color: var(--cor-texto);
+}
+.suite-btn:hover {
+    border-color: var(--cor-primaria);
+    box-shadow: 0 6px 18px rgba(192,0,0,0.14);
+    transform: translateY(-3px);
+}
+.suite-btn:active { transform: translateY(-1px); }
+.suite-btn.active { border-color: var(--cor-primaria); background: rgba(192,0,0,0.04); }
+.suite-name  { font-weight: 700; font-size: 0.88rem; margin-bottom: 2px; }
+.suite-count { font-size: 0.72rem; color: var(--cor-texto-secundario); }
+.suite-icon  { font-size: 1.2rem; margin-bottom: 6px; }
+
+/* ── PAINEL DE CONTROLE ── */
+.control-bar {
+    display: flex; align-items: center; gap: 12px;
+    margin-bottom: 20px; flex-wrap: wrap;
+}
+.btn-run {
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 10px 22px;
+    background: linear-gradient(135deg, var(--cor-primaria), var(--cor-primaria-dark));
+    color: white; border: none; border-radius: 9px;
+    font-weight: 700; font-size: 0.9rem; cursor: pointer;
+    transition: filter 0.18s, transform 0.14s, box-shadow 0.18s;
+    box-shadow: 0 2px 8px rgba(192,0,0,0.22);
+}
+.btn-run:hover:not(:disabled) {
+    filter: brightness(1.08);
+    transform: translateY(-2px);
+    box-shadow: 0 8px 20px rgba(192,0,0,0.38);
+}
+.btn-run:active:not(:disabled) { transform: translateY(0); box-shadow: 0 2px 6px rgba(192,0,0,0.3); }
+.btn-run:disabled { opacity: 0.5; cursor: not-allowed; }
+.btn-run svg { width: 16px; height: 16px; stroke: white; fill: none; }
+
+.btn-clear {
+    padding: 10px 18px;
+    background: var(--cor-card); border: 1px solid var(--cor-borda);
+    border-radius: 9px; color: var(--cor-texto);
+    font-size: 0.85rem; font-weight: 600; cursor: pointer;
+    transition: border-color 0.18s, background 0.18s, transform 0.14s;
+}
+.btn-clear:hover {
+    border-color: var(--cor-primaria);
+    background: rgba(192,0,0,0.06);
+    transform: translateY(-1px);
+}
+.btn-clear:active { transform: translateY(0); }
+
+.selected-label {
+    font-size: 0.82rem; color: var(--cor-texto-secundario);
+    padding: 6px 12px; background: var(--cor-fundo);
+    border-radius: 6px; border: 1px solid var(--cor-borda);
+}
+
+/* ── BARRA DE PROGRESSO ── */
+.progress-wrap { margin-bottom: 20px; display: none; }
+.progress-track {
+    height: 6px; background: var(--cor-borda); border-radius: 99px; overflow: hidden;
+}
+.progress-fill {
+    height: 100%; border-radius: 99px; width: 0%;
+    background: linear-gradient(90deg, var(--cor-primaria), #FF6B6B);
+    transition: width 0.3s ease;
+    animation: progressPulse 1.5s ease infinite;
+}
+@keyframes progressPulse {
+    0%,100% { opacity: 1; } 50% { opacity: 0.7; }
+}
+
+/* ── RESULTADO GLOBAL ── */
+.result-summary {
+    display: none;
+    border-radius: 12px; padding: 16px 20px;
+    margin-bottom: 20px;
+    border: 1px solid;
+    animation: fadeIn 0.3s ease;
+}
+@keyframes fadeIn { from { opacity:0; transform:translateY(6px); } to { opacity:1; transform:none; } }
+.result-summary.ok     { background: rgba(16,185,129,0.08); border-color: rgba(16,185,129,0.3); }
+.result-summary.fail   { background: rgba(192,0,0,0.06);   border-color: rgba(192,0,0,0.3); }
+.result-row { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
+.result-stat { display: flex; align-items: center; gap: 6px; font-size: 0.85rem; }
+.stat-num { font-size: 1.4rem; font-weight: 800; line-height: 1; }
+.stat-num.passed { color: var(--cor-livre); }
+.stat-num.failed { color: var(--cor-ocupado); }
+.stat-num.errors { color: var(--cor-aviso); }
+.result-label { color: var(--cor-texto-secundario); font-size: 0.78rem; }
+
+/* ── LOG DE SAÍDA ── */
+.output-card {
+    background: var(--cor-card); border-radius: 12px;
+    border: 1px solid var(--cor-borda); overflow: hidden;
+}
+.output-header {
+    padding: 12px 16px; border-bottom: 1px solid var(--cor-borda);
+    display: flex; align-items: center; justify-content: space-between;
+    font-size: 0.82rem; font-weight: 600; color: var(--cor-texto);
+}
+.output-log {
+    font-family: 'SF Mono', 'Fira Code', 'Cascadia Code', monospace;
+    font-size: 0.78rem; line-height: 1.7;
+    padding: 16px;
+    max-height: 520px; overflow-y: auto;
+    white-space: pre-wrap; word-break: break-all;
+    color: var(--cor-texto);
+    background: var(--cor-fundo);
+    min-height: 80px;
+}
+.output-log:empty::before {
+    content: 'Execute os testes para ver o resultado aqui.';
+    color: var(--cor-texto-secundario);
+    font-style: italic;
+}
+/* Colorização das linhas */
+.line-passed { color: #10B981; }
+.line-failed { color: var(--cor-primaria); font-weight: 600; }
+.line-error  { color: #F59E0B; }
+.line-sep    { color: var(--cor-texto-secundario); }
+.line-meta   { color: var(--cor-texto-secundario); font-size: 0.72rem; }
+
+.btn-back {
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 9px 18px;
+    background: var(--cor-card); border: 1px solid var(--cor-borda);
+    border-radius: 9px; color: var(--cor-texto);
+    text-decoration: none; font-size: 0.85rem; font-weight: 600;
+    margin-bottom: 20px; transition: border-color 0.2s, box-shadow 0.2s;
+}
+.btn-back:hover { border-color: var(--cor-primaria); box-shadow: 0 0 0 3px rgba(192,0,0,0.08); }
+.btn-back svg { width: 16px; height: 16px; stroke: currentColor; fill: none; }
+</style>
+{% endblock %}
+
+{% block header %}
+<header class="header">
+    <div class="header-content">
+        <div class="header-brand">
+            <a href="{{ url_for('dashboard') }}" class="brand-icon" title="Dashboard">
+                <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/>
+                </svg>
+            </a>
+            <div>
+                <h1>Testes Automatizados</h1>
+                <div class="header-subtitle">ChargeGrid Intelligence · pytest · 61 casos</div>
+            </div>
+        </div>
+        <button class="theme-toggle" aria-label="Alternar tema">
+            <svg class="icon-sun" viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+            <svg class="icon-moon" viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+        </button>
+    </div>
+</header>
+{% endblock %}
+
+{% block content %}
+<main class="container">
+    <a href="{{ url_for('dashboard') }}" class="btn-back">
+        <svg viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg>
+        Voltar ao Dashboard
+    </a>
+
+    <h2 class="page-title">Suítes de Teste</h2>
+    <p class="page-sub">Selecione uma suíte ou execute todos os 61 casos de uma vez. Os testes rodam via pytest no servidor e o resultado aparece aqui em tempo real.</p>
+
+    <!-- ── SELEÇÃO DE SUÍTE ── -->
+    <div class="suites-grid">
+        <button class="suite-btn active" data-suite="" onclick="selectSuite(this, '', 'Todos os testes (61)')">
+            <div class="suite-icon">🧪</div>
+            <div class="suite-name">Todos</div>
+            <div class="suite-count">61 casos</div>
+        </button>
+        <button class="suite-btn" data-suite="TestPricingEngine" onclick="selectSuite(this, 'TestPricingEngine', 'PricingEngine (13)')">
+            <div class="suite-icon">💰</div>
+            <div class="suite-name">PricingEngine</div>
+            <div class="suite-count">13 casos — tarifação dinâmica</div>
+        </button>
+        <button class="suite-btn" data-suite="TestPowerManagerAlocacao" onclick="selectSuite(this, 'TestPowerManagerAlocacao', 'PowerManager · Alocação (6)')">
+            <div class="suite-icon">⚡</div>
+            <div class="suite-name">PowerManager · Alocação</div>
+            <div class="suite-count">6 casos — 4 cenários + limites</div>
+        </button>
+        <button class="suite-btn" data-suite="TestPowerManagerRebalance" onclick="selectSuite(this, 'TestPowerManagerRebalance', 'PowerManager · Rebalance (4)')">
+            <div class="suite-icon">🔄</div>
+            <div class="suite-name">PowerManager · Rebalance</div>
+            <div class="suite-count">4 casos — restauração de potência</div>
+        </button>
+        <button class="suite-btn" data-suite="TestSessionManager" onclick="selectSuite(this, 'TestSessionManager', 'SessionManager (8)')">
+            <div class="suite-icon">🚗</div>
+            <div class="suite-name">SessionManager</div>
+            <div class="suite-count">8 casos — ciclo de sessão</div>
+        </button>
+        <button class="suite-btn" data-suite="TestFlaskRoutes" onclick="selectSuite(this, 'TestFlaskRoutes', 'Flask Routes (8)')">
+            <div class="suite-icon">🌐</div>
+            <div class="suite-name">Flask Routes</div>
+            <div class="suite-count">8 casos — rotas e integração</div>
+        </button>
+        <button class="suite-btn" data-suite="TestRegressaoBugs or TestAuditoriaB24aB35 or TestAuditoriaModbusFlask or TestRevisaoR1aR5" onclick="selectSuite(this, 'TestRegressaoBugs or TestAuditoriaB24aB35 or TestAuditoriaModbusFlask or TestRevisaoR1aR5', 'Regressão e Auditoria (18)')">
+            <div class="suite-icon">🛡️</div>
+            <div class="suite-name">Regressão e Auditoria</div>
+            <div class="suite-count">18 casos — não-reincidência de bugs</div>
+        </button>
+        <button class="suite-btn" data-suite="TestConectorVIP" onclick="selectSuite(this, 'TestConectorVIP', 'Conector VIP (4)')">
+            <div class="suite-icon">⭐</div>
+            <div class="suite-name">Conector VIP</div>
+            <div class="suite-count">4 casos — exclusividade do C5</div>
+        </button>
+    </div>
+
+    <!-- ── BARRA DE CONTROLE ── -->
+    <div class="control-bar">
+        <button class="btn-run" id="btnRun" onclick="runTests()">
+            <svg viewBox="0 0 24 24"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+            Executar
+        </button>
+        <button class="btn-clear" onclick="clearOutput()">Limpar</button>
+        <span class="selected-label" id="selectedLabel">Todos os testes (61)</span>
+    </div>
+
+    <!-- ── BARRA DE PROGRESSO ── -->
+    <div class="progress-wrap" id="progressWrap">
+        <div class="progress-track">
+            <div class="progress-fill" id="progressFill"></div>
+        </div>
+    </div>
+
+    <!-- ── RESUMO ── -->
+    <div class="result-summary" id="resultSummary">
+        <div class="result-row">
+            <div class="result-stat">
+                <div class="stat-num passed" id="rPassed">0</div>
+                <div class="result-label">passaram</div>
+            </div>
+            <div class="result-stat">
+                <div class="stat-num failed" id="rFailed">0</div>
+                <div class="result-label">falharam</div>
+            </div>
+            <div class="result-stat">
+                <div class="stat-num errors" id="rErrors">0</div>
+                <div class="result-label">erros</div>
+            </div>
+            <div style="margin-left:auto;font-size:1.4rem;" id="rEmoji">—</div>
+        </div>
+    </div>
+
+    <!-- ── LOG DE SAÍDA ── -->
+    <div class="output-card">
+        <div class="output-header">
+            <span>Saída do pytest</span>
+            <span id="outputMeta" style="color:var(--cor-texto-secundario);font-weight:400;">aguardando execução</span>
+        </div>
+        <div class="output-log" id="outputLog"></div>
+    </div>
+
+</main>
+{% endblock %}
+
+{% block scripts %}
+<script>
+var selectedSuite = '';
+var running = false;
+
+function selectSuite(btn, suite, label) {
+    document.querySelectorAll('.suite-btn').forEach(function(b) { b.classList.remove('active'); });
+    btn.classList.add('active');
+    selectedSuite = suite;
+    document.getElementById('selectedLabel').textContent = label;
+}
+
+function clearOutput() {
+    document.getElementById('outputLog').innerHTML = '';
+    document.getElementById('resultSummary').style.display = 'none';
+    document.getElementById('outputMeta').textContent = 'aguardando execução';
+}
+
+function colorize(text) {
+    return text.split('\n').map(function(line) {
+        var cls = '';
+        if (/PASSED/.test(line))       cls = 'line-passed';
+        else if (/FAILED/.test(line))  cls = 'line-failed';
+        else if (/ERROR/.test(line))   cls = 'line-error';
+        else if (/^=+/.test(line) || /^-+/.test(line)) cls = 'line-sep';
+        else if (/^platform|^rootdir|^collected|^cachedir/.test(line)) cls = 'line-meta';
+
+        if (!cls) return escHtml(line);
+        return '<span class="' + cls + '">' + escHtml(line) + '</span>';
+    }).join('\n');
+}
+
+function escHtml(s) {
+    return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+function runTests() {
+    if (running) return;
+    running = true;
+
+    var btn = document.getElementById('btnRun');
+    var log = document.getElementById('outputLog');
+    var prog = document.getElementById('progressWrap');
+    var fill = document.getElementById('progressFill');
+    var summary = document.getElementById('resultSummary');
+    var meta = document.getElementById('outputMeta');
+
+    btn.disabled = true;
+    btn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" width="16" height="16"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg> Executando…';
+
+    log.innerHTML = '<span class="line-meta">▶ Iniciando pytest' + (selectedSuite ? ' :: ' + selectedSuite : '') + '…\n</span>';
+    summary.style.display = 'none';
+    prog.style.display = 'block';
+    fill.style.width = '0%';
+
+    // Anima a barra durante a execução
+    var pct = 0;
+    var ticker = setInterval(function() {
+        pct = Math.min(pct + (Math.random() * 8 + 2), 85);
+        fill.style.width = pct + '%';
+    }, 300);
+
+    fetch('/api/testes/run', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ modulo: selectedSuite }),
+    })
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+        clearInterval(ticker);
+        fill.style.width = '100%';
+        fill.style.animation = 'none';
+        fill.style.background = data.ok ? '#10B981' : 'var(--cor-primaria)';
+
+        setTimeout(function() { prog.style.display = 'none'; }, 800);
+
+        log.innerHTML = colorize(data.output);
+        log.scrollTop = log.scrollHeight;
+
+        // Resumo
+        document.getElementById('rPassed').textContent = data.passed;
+        document.getElementById('rFailed').textContent = data.failed;
+        document.getElementById('rErrors').textContent = data.errors;
+        document.getElementById('rEmoji').textContent = data.ok ? '✅' : '❌';
+        summary.className = 'result-summary ' + (data.ok ? 'ok' : 'fail');
+        summary.style.display = 'block';
+
+        var ts = new Date().toLocaleTimeString('pt-BR');
+        meta.textContent = ts + ' · ' + data.passed + ' passed, ' + data.failed + ' failed';
+    })
+    .catch(function(err) {
+        clearInterval(ticker);
+        log.innerHTML = '<span class="line-error">Erro de comunicação com o servidor:\n' + escHtml(String(err)) + '</span>';
+        prog.style.display = 'none';
+    })
+    .finally(function() {
+        running = false;
+        btn.disabled = false;
+        btn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" width="16" height="16"><polygon points="5 3 19 12 5 21 5 3"/></svg> Executar';
+    });
+}
+</script>
+{% endblock %}

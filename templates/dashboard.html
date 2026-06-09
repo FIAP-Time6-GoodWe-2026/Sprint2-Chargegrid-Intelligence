@@ -1,0 +1,952 @@
+{% extends "base.html" %}
+{% block title %}Dashboard — ChargeGrid Intelligence{% endblock %}
+
+{% block extra_css %}
+<style>
+.container { max-width: 1400px; margin: 0 auto; padding: 24px; }
+
+/* ── GRID PRINCIPAL ─────────────────────────────────────── */
+.dashboard-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    grid-template-rows: auto;
+    gap: 20px;
+}
+.col-span-2 { grid-column: span 2; }
+.col-span-3 { grid-column: span 3; }
+
+/* ── CARDS BASE ─────────────────────────────────────────── */
+.card {
+    background: var(--cor-card);
+    border-radius: 14px;
+    border: 1px solid var(--cor-borda);
+    box-shadow: var(--sombra-sm);
+    overflow: hidden;
+}
+.card-header {
+    padding: 16px 20px 12px;
+    border-bottom: 1px solid var(--cor-borda);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+}
+.card-title {
+    font-size: 0.9rem;
+    font-weight: 700;
+    color: var(--cor-texto);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+.card-title svg { width: 16px; height: 16px; stroke: var(--cor-primaria); fill: none; }
+.card-body { padding: 20px; }
+
+/* ── MÉTRICAS DE POTÊNCIA ───────────────────────────────── */
+.power-metrics {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 12px;
+}
+.metric {
+    background: var(--cor-fundo);
+    border-radius: 10px;
+    padding: 14px 16px;
+    border: 1px solid var(--cor-borda);
+}
+.metric-value {
+    font-size: 1.6rem;
+    font-weight: 700;
+    color: var(--cor-texto);
+    line-height: 1.1;
+}
+.metric-unit  { font-size: 0.75rem; font-weight: 400; color: var(--cor-texto-secundario); }
+.metric-label { font-size: 0.72rem; color: var(--cor-texto-secundario); margin-top: 4px; text-transform: uppercase; letter-spacing: 0.04em; }
+.metric-value.danger  { color: var(--cor-ocupado); }
+.metric-value.warning { color: var(--cor-aviso); }
+.metric-value.success { color: var(--cor-livre); }
+
+/* ── BARRA DE OCUPAÇÃO ──────────────────────────────────── */
+.power-bar-wrap {
+    margin-top: 16px;
+    background: var(--cor-fundo);
+    border-radius: 10px;
+    padding: 14px 16px;
+    border: 1px solid var(--cor-borda);
+}
+.power-bar-labels {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.75rem;
+    color: var(--cor-texto-secundario);
+    margin-bottom: 8px;
+}
+.power-bar-track {
+    height: 10px;
+    background: var(--cor-borda);
+    border-radius: 99px;
+    overflow: hidden;
+}
+.power-bar-fill {
+    height: 100%;
+    border-radius: 99px;
+    background: linear-gradient(90deg, var(--cor-primaria), #FF6B6B);
+    transition: width 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+.power-bar-fill.safe    { background: linear-gradient(90deg, #10B981, #34D399); }
+.power-bar-fill.warning { background: linear-gradient(90deg, #F59E0B, #FCD34D); }
+.power-bar-fill.danger  { background: linear-gradient(90deg, var(--cor-primaria), #FF6B6B); }
+
+/* ── SESSÕES ATIVAS ─────────────────────────────────────── */
+.session-list { display: flex; flex-direction: column; gap: 10px; }
+
+/* Agrupamento por posto */
+.posto-grupo {
+    border: 1px solid var(--cor-borda);
+    border-radius: 12px;
+    padding: 14px;
+    margin-bottom: 14px;
+    background: var(--cor-fundo);
+}
+.posto-grupo:last-child { margin-bottom: 0; }
+.posto-grupo-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 12px;
+    padding-bottom: 10px;
+    border-bottom: 2px solid var(--cor-borda);
+    flex-wrap: wrap;
+    gap: 8px;
+}
+.posto-grupo-titulo { display: flex; align-items: center; gap: 8px; }
+.posto-grupo-nome { font-weight: 700; font-size: 0.95rem; color: var(--cor-texto); }
+.posto-grupo-id {
+    font-size: 0.7rem; font-weight: 600;
+    background: var(--cor-primaria); color: white;
+    padding: 2px 7px; border-radius: 5px;
+}
+.posto-grupo-power {
+    font-size: 0.8rem; font-weight: 600;
+    color: var(--cor-texto-secundario);
+}
+.posto-grupo .session-card { margin-bottom: 8px; }
+.posto-grupo .session-card:last-of-type { margin-bottom: 0; }
+
+/* Decisões de potência por posto */
+.posto-decisoes {
+    margin-top: 12px;
+    padding-top: 10px;
+    border-top: 1px dashed var(--cor-borda);
+}
+.posto-decisoes-titulo {
+    display: flex; align-items: center; gap: 6px;
+    font-size: 0.72rem; font-weight: 700;
+    text-transform: uppercase; letter-spacing: 0.04em;
+    color: var(--cor-texto-secundario);
+    margin-bottom: 8px;
+}
+.posto-vazio {
+    font-size: 0.82rem;
+    color: var(--cor-texto-secundario);
+    font-style: italic;
+    padding: 4px 2px;
+}
+
+.session-card {
+    border: 1px solid var(--cor-borda);
+    border-radius: 10px;
+    padding: 14px 16px;
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    gap: 12px;
+    align-items: center;
+    transition: border-color 0.2s, box-shadow 0.2s;
+}
+.session-card:hover {
+    border-color: var(--cor-primaria);
+    box-shadow: 0 0 0 3px rgba(192,0,0,0.06);
+}
+.session-card.throttled { border-left: 3px solid var(--cor-aviso); }
+.session-card.charging  { border-left: 3px solid var(--cor-livre); }
+
+.session-icon {
+    width: 38px; height: 38px;
+    border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+}
+.session-icon.charging  { background: #D1FAE5; }
+.session-icon.throttled { background: #FEF3C7; }
+.session-icon svg { width: 20px; height: 20px; fill: none; }
+.session-icon.charging  svg { stroke: #059669; }
+.session-icon.throttled svg { stroke: #D97706; }
+[data-theme="dark"] .session-icon.charging  { background: rgba(16,185,129,0.15); }
+[data-theme="dark"] .session-icon.throttled { background: rgba(245,158,11,0.15); }
+
+.session-info { min-width: 0; }
+.session-name { font-weight: 600; font-size: 0.9rem; color: var(--cor-texto); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.session-meta { font-size: 0.75rem; color: var(--cor-texto-secundario); margin-top: 2px; }
+.session-badges { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 4px; }
+
+.badge {
+    font-size: 0.68rem; font-weight: 600;
+    padding: 2px 8px; border-radius: 99px;
+    text-transform: uppercase; letter-spacing: 0.04em;
+}
+.badge-green  { background: #D1FAE5; color: #065F46; }
+.badge-yellow { background: #FEF3C7; color: #92400E; }
+.badge-blue   { background: #DBEAFE; color: #1E40AF; }
+.badge-red    { background: #FEE2E2; color: #991B1B; }
+[data-theme="dark"] .badge-green  { background: rgba(16,185,129,0.2); color: #34D399; }
+[data-theme="dark"] .badge-yellow { background: rgba(245,158,11,0.2); color: #FCD34D; }
+[data-theme="dark"] .badge-blue   { background: rgba(37,99,235,0.2);  color: #93C5FD; }
+[data-theme="dark"] .badge-red    { background: rgba(239,68,68,0.2);  color: #FCA5A5; }
+
+.session-actions { display: flex; flex-direction: column; align-items: flex-end; gap: 6px; }
+.session-kw   { font-size: 1.1rem; font-weight: 700; color: var(--cor-texto); }
+.session-cost { font-size: 0.78rem; color: var(--cor-texto-secundario); }
+
+.btn-encerrar {
+    background: var(--cor-fundo);
+    color: var(--cor-primaria);
+    border: 1px solid var(--cor-primaria);
+    border-radius: 7px;
+    padding: 5px 12px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.18s, color 0.18s, transform 0.12s, box-shadow 0.18s;
+    white-space: nowrap;
+}
+.btn-encerrar:hover {
+    background: var(--cor-primaria);
+    color: white;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(192,0,0,0.28);
+}
+.btn-encerrar:active { transform: translateY(0); box-shadow: 0 1px 4px rgba(192,0,0,0.25); }
+
+.empty-state {
+    text-align: center; padding: 32px 20px;
+    color: var(--cor-texto-secundario); font-size: 0.9rem;
+}
+.empty-state svg { width: 40px; height: 40px; stroke: var(--cor-borda); fill: none; margin-bottom: 10px; display: block; margin-inline: auto; }
+
+/* ── FORMULÁRIO DE NOVA SESSÃO ──────────────────────────── */
+.form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+.form-full  { grid-column: span 2; }
+
+.form-group label {
+    display: block;
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: var(--cor-texto-secundario);
+    margin-bottom: 5px;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+.form-group select,
+.form-group input {
+    width: 100%;
+    padding: 9px 12px;
+    background: var(--cor-input-bg);
+    border: 1px solid var(--cor-input-border);
+    border-radius: 8px;
+    color: var(--cor-texto);
+    font-size: 0.875rem;
+    transition: border-color 0.2s, box-shadow 0.2s;
+    outline: none;
+}
+.form-group select:focus,
+.form-group input:focus {
+    border-color: var(--cor-primaria);
+    box-shadow: 0 0 0 3px rgba(192,0,0,0.1);
+}
+
+.btn-submit-dash {
+    width: 100%;
+    background: linear-gradient(135deg, var(--cor-primaria), var(--cor-primaria-dark));
+    color: white;
+    border: none;
+    border-radius: 9px;
+    padding: 11px;
+    font-weight: 700;
+    font-size: 0.9rem;
+    cursor: pointer;
+    margin-top: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    transition: filter 0.18s, transform 0.14s, box-shadow 0.18s;
+    box-shadow: 0 2px 8px rgba(192,0,0,0.22);
+}
+.btn-submit-dash:hover {
+    filter: brightness(1.08);
+    transform: translateY(-2px);
+    box-shadow: 0 8px 20px rgba(192,0,0,0.38);
+}
+.btn-submit-dash:active { transform: translateY(0); box-shadow: 0 2px 6px rgba(192,0,0,0.3); }
+.btn-submit-dash svg { width: 16px; height: 16px; stroke: white; fill: none; }
+
+/* Botões do cabeçalho: estilo .header-btn definido globalmente em base.html */
+
+/* ── TABELA DE TARIFAS ──────────────────────────────────── */
+.tariff-table { width: 100%; border-collapse: collapse; font-size: 0.83rem; }
+.tariff-table th {
+    text-align: left; padding: 8px 12px;
+    background: var(--cor-table-header);
+    color: var(--cor-texto-secundario);
+    font-size: 0.72rem; text-transform: uppercase;
+    letter-spacing: 0.05em;
+    border-bottom: 1px solid var(--cor-borda);
+}
+.tariff-table td {
+    padding: 10px 12px;
+    border-bottom: 1px solid var(--cor-borda);
+    color: var(--cor-texto);
+}
+.tariff-table tr:last-child td { border-bottom: none; }
+.tariff-table .highlight { color: var(--cor-primaria); font-weight: 700; }
+
+/* ── LOG MODBUS ─────────────────────────────────────────── */
+.modbus-log { display: flex; flex-direction: column; gap: 6px; max-height: 280px; overflow-y: auto; }
+.modbus-frame {
+    font-family: 'SF Mono', 'Fira Code', monospace;
+    font-size: 0.72rem;
+    padding: 7px 10px;
+    border-radius: 6px;
+    border-left: 3px solid;
+    line-height: 1.5;
+}
+.modbus-frame.tx { background: rgba(37,99,235,0.06); border-color: var(--cor-info); color: var(--cor-texto); }
+.modbus-frame.rx { background: rgba(16,185,129,0.06); border-color: var(--cor-livre); color: var(--cor-texto); }
+.frame-dir  { font-weight: 700; }
+.frame-dir.tx-label { color: var(--cor-info); }
+.frame-dir.rx-label { color: var(--cor-livre); }
+.frame-hex  { color: var(--cor-texto-secundario); font-size: 0.68rem; margin-top: 2px; }
+.frame-desc { color: var(--cor-texto); }
+
+/* ── HISTÓRICO DE DECISÕES ──────────────────────────────── */
+.event-list { display: flex; flex-direction: column; gap: 8px; }
+.event-item {
+    display: flex; align-items: flex-start; gap: 10px;
+    font-size: 0.8rem; padding: 8px 10px;
+    border-radius: 8px; background: var(--cor-fundo);
+    border: 1px solid var(--cor-borda);
+}
+.event-dot {
+    width: 8px; height: 8px; border-radius: 50%;
+    margin-top: 4px; flex-shrink: 0;
+}
+.event-dot.ok      { background: var(--cor-livre); }
+.event-dot.warning { background: var(--cor-aviso); }
+.event-dot.danger  { background: var(--cor-ocupado); }
+
+/* ── LIVE INDICATOR ─────────────────────────────────────── */
+.live-indicator {
+    display: flex; align-items: center; gap: 6px;
+    font-size: 0.72rem; color: var(--cor-texto-secundario);
+}
+.live-dot {
+    width: 7px; height: 7px; border-radius: 50%;
+    background: var(--cor-livre);
+    animation: livePulse 1.5s ease infinite;
+}
+@keyframes livePulse {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50%       { opacity: 0.5; transform: scale(0.8); }
+}
+
+
+/* ── MINI-CARDS DE POSTO ────────────────────────────────── */
+.postos-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px;
+    margin-top: 20px;
+}
+.posto-card {
+    background: var(--cor-fundo);
+    border-radius: 10px;
+    border: 1px solid var(--cor-borda);
+    padding: 14px 16px;
+    transition: border-color 0.2s;
+}
+.posto-card.throttle-ativo {
+    border-color: var(--cor-aviso);
+    box-shadow: 0 0 0 2px rgba(245,158,11,0.12);
+}
+.posto-card-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 10px;
+}
+.posto-card-nome {
+    font-size: 0.8rem;
+    font-weight: 700;
+    color: var(--cor-texto);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+.posto-id-badge {
+    font-size: 0.65rem;
+    font-weight: 700;
+    padding: 2px 6px;
+    border-radius: 5px;
+    background: rgba(192,0,0,0.12);
+    color: var(--cor-primaria);
+}
+.posto-metrics {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 8px;
+    margin-bottom: 10px;
+}
+.posto-metric-val {
+    font-size: 1.05rem;
+    font-weight: 700;
+    color: var(--cor-texto);
+    line-height: 1.1;
+}
+.posto-metric-val .unit { font-size: 0.65rem; font-weight: 400; color: var(--cor-texto-secundario); }
+.posto-metric-lbl {
+    font-size: 0.65rem;
+    color: var(--cor-texto-secundario);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    margin-top: 2px;
+}
+.posto-metric-val.danger  { color: var(--cor-ocupado); }
+.posto-metric-val.warning { color: var(--cor-aviso); }
+.posto-metric-val.success { color: var(--cor-livre); }
+.posto-bar-track {
+    height: 6px;
+    background: var(--cor-borda);
+    border-radius: 99px;
+    overflow: hidden;
+}
+.posto-bar-fill {
+    height: 100%;
+    border-radius: 99px;
+    transition: width 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+.posto-bar-fill.safe    { background: linear-gradient(90deg, #10B981, #34D399); }
+.posto-bar-fill.warning { background: linear-gradient(90deg, #F59E0B, #FCD34D); }
+.posto-bar-fill.danger  { background: linear-gradient(90deg, var(--cor-primaria), #FF6B6B); }
+.posto-bar-labels {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.65rem;
+    color: var(--cor-texto-secundario);
+    margin-bottom: 4px;
+}
+.throttle-badge-sm {
+    font-size: 0.62rem;
+    font-weight: 700;
+    padding: 2px 7px;
+    border-radius: 99px;
+    background: rgba(245,158,11,0.18);
+    color: #D97706;
+    text-transform: uppercase;
+}
+[data-theme="dark"] .throttle-badge-sm { background: rgba(245,158,11,0.22); color: #FCD34D; }
+
+@media (max-width: 900px) { .postos-grid { grid-template-columns: 1fr; } }
+@media (max-width: 1100px) { .postos-grid { grid-template-columns: 1fr 1fr; } }
+/* ── RESPONSIVO ─────────────────────────────────────────── */
+@media (max-width: 1100px) {
+    .dashboard-grid { grid-template-columns: 1fr 1fr; }
+    .col-span-3 { grid-column: span 2; }
+}
+@media (max-width: 700px) {
+    .dashboard-grid { grid-template-columns: 1fr; }
+    .col-span-2, .col-span-3 { grid-column: span 1; }
+    .power-metrics { grid-template-columns: 1fr 1fr; }
+    .form-grid { grid-template-columns: 1fr; }
+    .form-full { grid-column: span 1; }
+}
+</style>
+{% endblock %}
+
+{% block header %}
+<header class="header">
+    <div class="header-content">
+        <div class="header-brand">
+            <a href="{{ url_for('mapa') }}" class="brand-icon" title="Mapa de postos">
+                <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/>
+                </svg>
+            </a>
+            <div>
+                <h1>ChargeGrid Intelligence</h1>
+                <div class="header-subtitle">Dashboard · Sprint 2 · GoodWe HCA G2</div>
+            </div>
+        </div>
+        <div style="display:flex;align-items:center;gap:10px;">
+            <div class="live-indicator">
+                <span class="live-dot"></span>
+                <span id="last-update">ao vivo</span>
+            </div>
+            <a href="{{ url_for('relatorio_consolidado') }}"
+               class="header-btn">
+                <svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" width="14" height="14"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+                Relatório
+            </a>
+            <a href="{{ url_for('modbus_log') }}"
+               class="header-btn">
+                <svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" width="14" height="14"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+                Modbus
+            </a>
+            <a href="{{ url_for('testes') }}"
+               class="header-btn">
+                <svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" width="14" height="14"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+                Testes
+            </a>
+            <button class="theme-toggle" aria-label="Alternar tema">
+                <svg class="icon-sun" viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+                <svg class="icon-moon" viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+            </button>
+        </div>
+    </div>
+</header>
+{% endblock %}
+
+{% block content %}
+<main class="container">
+<div class="dashboard-grid">
+
+    <!-- ── PAINEL DE POTÊNCIA ─────────────────────────────── -->
+    <div class="card col-span-3">
+        <div class="card-header">
+            <span class="card-title">
+                <svg viewBox="0 0 24 24"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+                Painel de Potência · GW11K-HCA-20
+            </span>
+            <span class="badge {% if ocupacao_pct >= 90 %}badge-red{% elif ocupacao_pct >= 70 %}badge-yellow{% else %}badge-green{% endif %}"
+                  id="badge-ocupacao-global">
+                {{ ocupacao_pct }}% ocupado
+            </span>
+        </div>
+        <div class="card-body">
+            <!-- Resumo global agregado (soma dos 3 postos) -->
+            <div class="power-metrics">
+                <div class="metric">
+                    <div class="metric-value {% if potencia_em_uso / potencia_limite >= 0.9 %}danger{% elif potencia_em_uso / potencia_limite >= 0.7 %}warning{% else %}success{% endif %}"
+                         id="global-em-uso">
+                        {{ "%.1f"|format(potencia_em_uso) }}<span class="metric-unit"> kW</span>
+                    </div>
+                    <div class="metric-label">Total em uso</div>
+                </div>
+                <div class="metric">
+                    <div class="metric-value" id="global-limite">
+                        {{ "%.1f"|format(potencia_limite) }}<span class="metric-unit"> kW</span>
+                    </div>
+                    <div class="metric-label">Cap. instalada total</div>
+                </div>
+                <div class="metric">
+                    <div class="metric-value success" id="global-disponivel">
+                        {{ "%.1f"|format(available_kw) }}<span class="metric-unit"> kW</span>
+                    </div>
+                    <div class="metric-label">Disponível total</div>
+                </div>
+                <div class="metric">
+                    <div class="metric-value" id="total-ativas">{{ sessoes_ativas|length }}</div>
+                    <div class="metric-label">Sessões ativas</div>
+                </div>
+            </div>
+
+            <!-- Barra global -->
+            <div class="power-bar-wrap">
+                <div class="power-bar-labels">
+                    <span>0 kW</span>
+                    <span>Limiar (90%) — {{ "%.1f"|format(potencia_limite * 0.9) }} kW</span>
+                    <span>{{ "%.1f"|format(potencia_limite) }} kW</span>
+                </div>
+                <div class="power-bar-track">
+                    <div class="power-bar-fill {% if ocupacao_pct >= 90 %}danger{% elif ocupacao_pct >= 70 %}warning{% else %}safe{% endif %}"
+                         id="power-bar"
+                         style="width: {{ [ocupacao_pct, 100]|min }}%">
+                    </div>
+                </div>
+            </div>
+
+            <!-- Mini-cards por posto -->
+            <div class="postos-grid">
+                {% for p in postos_power %}
+                <div class="posto-card {% if p.em_throttle %}throttle-ativo{% endif %}"
+                     id="posto-card-{{ p.id }}">
+                    <div class="posto-card-header">
+                        <div class="posto-card-nome">
+                            <span class="posto-id-badge">{{ p.id }}</span>
+                            {{ p.nome }}
+                        </div>
+                        {% if p.em_throttle %}
+                        <span class="throttle-badge-sm">⚡ throttle</span>
+                        {% endif %}
+                    </div>
+                    <div class="posto-metrics">
+                        <div>
+                            <div class="posto-metric-val {% if p.ocupacao_pct >= 90 %}danger{% elif p.ocupacao_pct >= 70 %}warning{% else %}success{% endif %}"
+                                 id="posto-{{ p.id }}-uso">
+                                {{ "%.1f"|format(p.em_uso_kw) }}<span class="unit"> kW</span>
+                            </div>
+                            <div class="posto-metric-lbl">Em uso</div>
+                        </div>
+                        <div>
+                            <div class="posto-metric-val" id="posto-{{ p.id }}-limite">
+                                {{ "%.1f"|format(p.limite_kw) }}<span class="unit"> kW</span>
+                            </div>
+                            <div class="posto-metric-lbl">Limite</div>
+                        </div>
+                        <div>
+                            <div class="posto-metric-val success" id="posto-{{ p.id }}-disp">
+                                {{ "%.1f"|format(p.disponivel_kw) }}<span class="unit"> kW</span>
+                            </div>
+                            <div class="posto-metric-lbl">Disponível</div>
+                        </div>
+                    </div>
+                    <div class="posto-bar-labels">
+                        <span>0 kW</span>
+                        <span id="posto-{{ p.id }}-pct">{{ p.ocupacao_pct }}%</span>
+                        <span>{{ "%.0f"|format(p.limite_kw) }} kW</span>
+                    </div>
+                    <div class="posto-bar-track">
+                        <div class="posto-bar-fill {% if p.ocupacao_pct >= 90 %}danger{% elif p.ocupacao_pct >= 70 %}warning{% else %}safe{% endif %}"
+                             id="posto-{{ p.id }}-bar"
+                             style="width: {{ [p.ocupacao_pct, 100]|min }}%">
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+
+        </div>
+    </div>
+
+    <!-- ── SESSÕES ATIVAS POR POSTO ───────────────────────── -->
+    <div class="card col-span-2">
+        <div class="card-header">
+            <span class="card-title">
+                <svg viewBox="0 0 24 24"><rect x="1" y="3" width="15" height="13" rx="2"/><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>
+                Sessões Ativas por Posto
+            </span>
+            <span class="live-indicator"><span class="live-dot"></span> tempo real</span>
+        </div>
+        <div class="card-body">
+            <div class="session-list" id="session-list">
+            {% if sessoes_ativas %}
+                {% for posto in postos_detalhe %}
+                <div class="posto-grupo" data-posto-id="{{ posto.id }}">
+                    <div class="posto-grupo-header">
+                        <div class="posto-grupo-titulo">
+                            <span class="posto-grupo-nome">{{ posto.nome }}</span>
+                            <span class="posto-grupo-id">{{ posto.id }}</span>
+                            {% if posto.em_throttle %}
+                            <span class="badge badge-yellow">⚡ Throttle</span>
+                            {% endif %}
+                        </div>
+                        <div class="posto-grupo-power">
+                            {{ "%.1f"|format(posto.em_uso_kw) }} / {{ "%.0f"|format(posto.limite_kw) }} kW
+                            · {{ posto.sessoes|length }} sessã{{ 'o' if posto.sessoes|length == 1 else 'es' }}
+                        </div>
+                    </div>
+
+                    {% if posto.sessoes %}
+                        {% for s in posto.sessoes %}
+                        <div class="session-card {{ s.status.value.lower() }}" data-session-id="{{ s.session_id }}">
+                            <div class="session-icon {{ s.status.value.lower() }}">
+                                {% if s.status.value == 'THROTTLED' %}
+                                <svg viewBox="0 0 24 24" stroke-width="2" stroke-linecap="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+                                {% else %}
+                                <svg viewBox="0 0 24 24" stroke-width="2" stroke-linecap="round"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+                                {% endif %}
+                            </div>
+                            <div class="session-info">
+                                <div class="session-name">{{ s.user_name }}</div>
+                                <div class="session-meta">{{ s.charger_id }} · {{ s.vehicle_id }} · <span class="session-min">{{ "%.1f"|format(s.duration_minutes) }}</span> min</div>
+                                <div class="session-badges">
+                                    <span class="badge {% if s.status.value == 'THROTTLED' %}badge-yellow{% else %}badge-green{% endif %}">
+                                        {{ s.status.value }}
+                                    </span>
+                                    <span class="badge badge-blue">{{ s.user_type.name | tipo_pt }}</span>
+                                    <span class="badge badge-red">R$ {{ "%.4f"|format(s.tariff_kwh) }}/kWh</span>
+                                </div>
+                            </div>
+                            <div class="session-actions">
+                                <div class="session-kw">{{ "%.1f"|format(s.allocated_power_kw) }} kW</div>
+                                <div class="session-cost">R$ {{ "%.2f"|format(s.total_cost_brl) }} · {{ "%.3f"|format(s.energy_kwh) }} kWh</div>
+                                <form method="POST" action="{{ url_for('dashboard_encerrar') }}" style="margin:0;">
+                                    <input type="hidden" name="session_id" value="{{ s.session_id }}">
+                                    <button type="submit" class="btn-encerrar">Encerrar</button>
+                                </form>
+                            </div>
+                        </div>
+                        {% endfor %}
+
+                        {% if posto.decisoes %}
+                        <div class="posto-decisoes">
+                            <div class="posto-decisoes-titulo">
+                                <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+                                Decisões de potência
+                            </div>
+                            {% for r in posto.decisoes|reverse %}
+                            <div class="event-item">
+                                <span class="event-dot {{ r.severity }}"></span>
+                                <span>{{ r.message }}</span>
+                            </div>
+                            {% endfor %}
+                        </div>
+                        {% endif %}
+                    {% else %}
+                        <div class="posto-vazio">Nenhum veículo carregando neste posto.</div>
+                    {% endif %}
+                </div>
+                {% endfor %}
+            {% else %}
+                <div class="empty-state">
+                    <svg viewBox="0 0 24 24" stroke-width="1.5" stroke-linecap="round"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+                    Nenhum veículo carregando no momento.
+                </div>
+            {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- ── NOVA SESSÃO ────────────────────────────────────── -->
+    <div class="card">
+        <div class="card-header">
+            <span class="card-title">
+                <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
+                Nova Sessão
+            </span>
+        </div>
+        <div class="card-body">
+            <form method="POST" action="{{ url_for('dashboard_nova_sessao') }}">
+                <div class="form-grid">
+                    <div class="form-group form-full">
+                        <label>Carregador</label>
+                        <select name="charger_id" required>
+                            <option value="">Selecione...</option>
+                            {% for cid in disponiveis %}
+                            <option value="{{ cid }}">{{ cid }}</option>
+                            {% endfor %}
+                        </select>
+                        {% if total_disponivel > 8 %}
+                        <div style="font-size:0.72rem;color:var(--cor-texto-secundario);margin-top:4px;">
+                            +{{ total_disponivel - 8 }} carregadores disponíveis
+                        </div>
+                        {% endif %}
+                    </div>
+                    <div class="form-group">
+                        <label>Placa</label>
+                        <input type="text" name="vehicle_id" placeholder="ABC-1234" maxlength="8" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Tipo de usuário</label>
+                        <select name="user_type">
+                            <option value="P">Padrão</option>
+                            <option value="A">Assinante (−15%)</option>
+                            <option value="C">Corporativo (−10%)</option>
+                        </select>
+                    </div>
+                    <div class="form-group form-full">
+                        <label>Nome do motorista</label>
+                        <input type="text" name="user_name" placeholder="Nome do condutor">
+                    </div>
+                    <div class="form-group">
+                        <label>Hora de início</label>
+                        <input type="number" name="hora" min="0" max="23" placeholder="Agora">
+                    </div>
+                    <div class="form-group">
+                        <label>Potência (kW)</label>
+                        <select name="potencia">
+                            <option value="11.0">11.0 kW (máx)</option>
+                            <option value="8.0">8.0 kW</option>
+                            <option value="6.0">6.0 kW</option>
+                            <option value="4.2">4.2 kW (mín)</option>
+                        </select>
+                    </div>
+                </div>
+                <button type="submit" class="btn-submit-dash" style="margin-top:14px;">
+                    <svg viewBox="0 0 24 24"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+                    Iniciar Recarga
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- ── TABELA DE TARIFAS ──────────────────────────────── -->
+    <div class="card col-span-2">
+        <div class="card-header">
+            <span class="card-title">
+                <svg viewBox="0 0 24 24"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+                Tarifas Dinâmicas · Ocupação atual: {{ ocupacao_rede }}%
+            </span>
+        </div>
+        <div class="card-body" style="padding:0;">
+            <table class="tariff-table">
+                <thead>
+                    <tr>
+                        <th>Tipo</th>
+                        <th>Fora de pico</th>
+                        <th>Pico (18h–22h)</th>
+                        <th>Pico + Alta demanda (≥70%)</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for row in tariff_rows %}
+                    <tr>
+                        <td><strong>{{ row.tipo }}</strong> <span style="color:var(--cor-texto-secundario);">({{ row.label }})</span></td>
+                        <td>R$ {{ "%.4f"|format(row.tarifas.normal) }}</td>
+                        <td>R$ {{ "%.4f"|format(row.tarifas.pico) }}</td>
+                        <td class="highlight">R$ {{ "%.4f"|format(row.tarifas.pico_demanda) }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- ── LOG MODBUS ─────────────────────────────────────── -->
+    <div class="card col-span-2">
+        <div class="card-header">
+            <span class="card-title">
+                <svg viewBox="0 0 24 24"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+                Log Modbus TCP · HCA G2
+            </span>
+            <div style="display:flex;align-items:center;gap:10px;">
+                <span style="font-size:0.75rem;color:var(--cor-texto-secundario);">{{ total_frames }} frames total</span>
+                <a href="{{ url_for('modbus_log') }}" style="font-size:0.75rem;color:var(--cor-primaria);text-decoration:none;font-weight:600;">ver tudo →</a>
+            </div>
+        </div>
+        <div class="card-body" style="padding:14px 16px;">
+            <div class="modbus-log">
+            {% if frames_modbus %}
+                {% for f in frames_modbus %}
+                <div class="modbus-frame {{ f.direction.lower() }}">
+                    <div>
+                        <span class="frame-dir {{ f.direction.lower() }}-label">{{ f.direction }}</span>
+                        {{ "FC%02d"|format(f.function_code) }} · Reg {{ f.register_addr }} ·
+                        <span class="frame-desc">{{ f.description }}</span>
+                    </div>
+                    <div class="frame-hex">{{ f.to_hex() }}</div>
+                </div>
+                {% endfor %}
+            {% else %}
+                <div style="color:var(--cor-texto-secundario);font-size:0.82rem;">Nenhum frame registrado. Inicie uma sessão para ver o protocolo Modbus.</div>
+            {% endif %}
+            </div>
+        </div>
+    </div>
+
+</div><!-- /dashboard-grid -->
+</main>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Polling de atualização em tempo real (a cada 5s)
+(function () {
+    var INTERVAL = 2000;
+
+    // Mapeia classe de severidade a partir do percentual de ocupação
+    function barClass(pct) {
+        return pct >= 90 ? 'danger' : pct >= 70 ? 'warning' : 'safe';
+    }
+
+    function setEl(id, html) {
+        var el = document.getElementById(id);
+        if (el) el.innerHTML = html;
+    }
+
+    function fetchStatus() {
+        fetch('/api/status')
+            .then(function(r) { return r.json(); })
+            .then(function(data) {
+                // ── Resumo global ────────────────────────────────────
+                setEl('global-em-uso',
+                    data.potencia_em_uso.toFixed(1) + '<span class="metric-unit"> kW</span>');
+                setEl('global-disponivel',
+                    data.available_kw.toFixed(1) + '<span class="metric-unit"> kW</span>');
+                setEl('total-ativas', data.total_ativas);
+
+                var badge = document.getElementById('badge-ocupacao-global');
+                if (badge) {
+                    badge.textContent = data.ocupacao_pct + '% ocupado';
+                    badge.className = 'badge ' +
+                        (data.ocupacao_pct >= 90 ? 'badge-red' : data.ocupacao_pct >= 70 ? 'badge-yellow' : 'badge-green');
+                }
+
+                var bar = document.getElementById('power-bar');
+                if (bar) {
+                    bar.style.width = Math.min(data.ocupacao_pct, 100) + '%';
+                    bar.className = 'power-bar-fill ' + barClass(data.ocupacao_pct);
+                }
+
+                // ── Mini-cards por posto ─────────────────────────────
+                if (data.postos) {
+                    Object.keys(data.postos).forEach(function(pid) {
+                        var p = data.postos[pid];
+
+                        // Valores numéricos
+                        setEl('posto-' + pid + '-uso',
+                            p.em_uso_kw.toFixed(1) + '<span class="unit"> kW</span>');
+                        setEl('posto-' + pid + '-disp',
+                            p.disponivel_kw.toFixed(1) + '<span class="unit"> kW</span>');
+                        setEl('posto-' + pid + '-pct', p.ocupacao_pct + '%');
+
+                        // Cor do valor em uso
+                        var usoEl = document.getElementById('posto-' + pid + '-uso');
+                        if (usoEl) {
+                            usoEl.className = 'posto-metric-val ' + barClass(p.ocupacao_pct);
+                            usoEl.innerHTML = p.em_uso_kw.toFixed(1) + '<span class="unit"> kW</span>';
+                        }
+
+                        // Barra de posto
+                        var pbar = document.getElementById('posto-' + pid + '-bar');
+                        if (pbar) {
+                            pbar.style.width = Math.min(p.ocupacao_pct, 100) + '%';
+                            pbar.className = 'posto-bar-fill ' + barClass(p.ocupacao_pct);
+                        }
+                    });
+                }
+
+                // ── Sessões ativas — minutos, custo, energia e potência ──
+                data.sessoes_ativas.forEach(function(s) {
+                    var card = document.querySelector(
+                        '.session-card[data-session-id="' + s.session_id + '"]');
+                    if (!card) return;
+
+                    // Minutos de recarga (atualiza em tempo real)
+                    var minEl = card.querySelector('.session-min');
+                    if (minEl) minEl.textContent = s.duration_min.toFixed(1);
+
+                    // Custo acumulado · energia consumida
+                    var cost = card.querySelector('.session-cost');
+                    if (cost) {
+                        cost.textContent = 'R$ ' + s.cost_brl.toFixed(2) +
+                            ' · ' + s.energy_kwh.toFixed(3) + ' kWh';
+                    }
+
+                    // Potência alocada (pode mudar com throttle/rebalance)
+                    var kwEl = card.querySelector('.session-kw');
+                    if (kwEl) kwEl.textContent = s.allocated_kw.toFixed(1) + ' kW';
+                });
+
+                // ── Timestamp ─────────────────────────────────────────
+                var ts = document.getElementById('last-update');
+                if (ts) ts.textContent = 'atualizado ' + data.timestamp;
+            })
+            .catch(function(e) { console.warn('Polling error:', e); });
+    }
+
+    setInterval(fetchStatus, INTERVAL);
+}());
+</script>
+{% endblock %}

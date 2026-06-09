@@ -1,0 +1,239 @@
+{% extends "base.html" %}
+{% block title %}Log Modbus TCP — ChargeGrid Intelligence{% endblock %}
+
+{% block extra_css %}
+<style>
+.container { max-width: 1100px; margin: 0 auto; padding: 24px; }
+.page-title { font-size: 1.4rem; font-weight: 700; color: var(--cor-texto); margin-bottom: 4px; }
+.page-sub   { font-size: 0.85rem; color: var(--cor-texto-secundario); margin-bottom: 24px; }
+
+.summary-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+    gap: 14px;
+    margin-bottom: 24px;
+}
+.summary-card {
+    background: var(--cor-card);
+    border-radius: 12px;
+    border: 1px solid var(--cor-borda);
+    padding: 14px 16px;
+    box-shadow: var(--sombra-sm);
+    text-align: center;
+}
+.summary-val  { font-size: 1.4rem; font-weight: 700; color: var(--cor-texto); }
+.summary-lbl  { font-size: 0.72rem; color: var(--cor-texto-secundario); text-transform: uppercase; letter-spacing: 0.04em; margin-top: 4px; }
+.summary-val.tx-color { color: var(--cor-info); }
+.summary-val.rx-color { color: var(--cor-livre); }
+
+.log-card {
+    background: var(--cor-card);
+    border-radius: 14px;
+    border: 1px solid var(--cor-borda);
+    box-shadow: var(--sombra-sm);
+    overflow: hidden;
+}
+.log-card-header {
+    padding: 16px 20px;
+    border-bottom: 1px solid var(--cor-borda);
+    font-size: 0.9rem; font-weight: 700;
+    color: var(--cor-texto);
+    display: flex; align-items: center; justify-content: space-between;
+}
+.log-card-header svg { width: 16px; height: 16px; stroke: var(--cor-primaria); fill: none; }
+
+.frame-table { width: 100%; border-collapse: collapse; font-size: 0.8rem; }
+.frame-table th {
+    text-align: left; padding: 9px 14px;
+    background: var(--cor-table-header);
+    color: var(--cor-texto-secundario);
+    font-size: 0.7rem; text-transform: uppercase;
+    letter-spacing: 0.04em;
+    border-bottom: 1px solid var(--cor-borda);
+    white-space: nowrap;
+}
+.frame-table td {
+    padding: 10px 14px;
+    border-bottom: 1px solid var(--cor-borda);
+    vertical-align: top;
+}
+.frame-table tr:last-child td { border-bottom: none; }
+.frame-table tr:hover td { background: var(--cor-fundo); }
+
+.dir-badge {
+    display: inline-block; font-family: 'SF Mono', 'Fira Code', monospace;
+    font-size: 0.72rem; font-weight: 700;
+    padding: 2px 8px; border-radius: 4px;
+    text-transform: uppercase;
+}
+.dir-badge.TX { background: rgba(37,99,235,0.1); color: var(--cor-info); }
+.dir-badge.RX { background: rgba(16,185,129,0.1); color: var(--cor-livre); }
+
+.hex-cell {
+    font-family: 'SF Mono', 'Fira Code', monospace;
+    font-size: 0.72rem;
+    color: var(--cor-texto-secundario);
+    word-break: break-all;
+}
+.tid-cell { font-family: monospace; font-size: 0.78rem; color: var(--cor-texto-secundario); }
+.reg-cell { font-family: monospace; font-weight: 600; }
+
+.fc-badge {
+    font-size: 0.7rem; font-weight: 600; padding: 1px 7px;
+    border-radius: 4px; background: var(--cor-fundo);
+    border: 1px solid var(--cor-borda);
+    font-family: monospace;
+}
+
+.btn-back {
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 9px 18px;
+    background: var(--cor-card);
+    border: 1px solid var(--cor-borda);
+    border-radius: 9px;
+    color: var(--cor-texto);
+    text-decoration: none;
+    font-size: 0.85rem; font-weight: 600;
+    margin-bottom: 20px;
+    transition: border-color 0.2s, box-shadow 0.2s;
+}
+.btn-back:hover { border-color: var(--cor-primaria); box-shadow: 0 0 0 3px rgba(192,0,0,0.08); }
+.btn-back svg { width: 16px; height: 16px; stroke: currentColor; fill: none; }
+</style>
+{% endblock %}
+
+{% block header %}
+<header class="header">
+    <div class="header-content">
+        <div class="header-brand">
+            <a href="{{ url_for('dashboard') }}" class="brand-icon" title="Dashboard">
+                <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/>
+                </svg>
+            </a>
+            <div>
+                <h1>Log Modbus TCP</h1>
+                <div class="header-subtitle">GoodWe GW11K-HCA-20 · Porta 502 · Unit ID 0x01</div>
+            </div>
+        </div>
+        <button class="theme-toggle" aria-label="Alternar tema">
+            <svg class="icon-sun" viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+            <svg class="icon-moon" viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+        </button>
+    </div>
+</header>
+{% endblock %}
+
+{% block content %}
+<main class="container">
+    <a href="{{ url_for('dashboard') }}" class="btn-back">
+        <svg viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg>
+        Voltar ao Dashboard
+    </a>
+
+    <h2 class="page-title">Log de Frames Modbus TCP</h2>
+    <p class="page-sub">Comunicação simulada com os carregadores GW11K-HCA-20 · Protocolo Modbus TCP (RFC-compliant)</p>
+
+    {% set tx_count = frames | selectattr('direction', 'eq', 'TX') | list | length %}
+    {% set rx_count = frames | selectattr('direction', 'eq', 'RX') | list | length %}
+
+    <div class="summary-grid">
+        <div class="summary-card">
+            <div class="summary-val">{{ total_frames }}</div>
+            <div class="summary-lbl">Total de frames</div>
+        </div>
+        <div class="summary-card">
+            <div class="summary-val tx-color">{{ tx_count }}</div>
+            <div class="summary-lbl">TX (escritas)</div>
+        </div>
+        <div class="summary-card">
+            <div class="summary-val rx-color">{{ rx_count }}</div>
+            <div class="summary-lbl">RX (leituras)</div>
+        </div>
+        <div class="summary-card">
+            <div class="summary-val">502</div>
+            <div class="summary-lbl">Porta Modbus TCP</div>
+        </div>
+        <div class="summary-card">
+            <div class="summary-val">0x01</div>
+            <div class="summary-lbl">Unit ID (escravo)</div>
+        </div>
+    </div>
+
+    <div class="log-card">
+        <div class="log-card-header">
+            <span style="display:flex;align-items:center;gap:8px;">
+                <svg viewBox="0 0 24 24"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+                Frames ADU (Application Data Unit)
+            </span>
+            <span style="font-size:0.75rem;color:var(--cor-texto-secundario);">
+                [TID][PID][LEN][UID][FC][ADDR][DATA]
+            </span>
+        </div>
+        {% if frames %}
+        <div style="overflow-x:auto;">
+        <table class="frame-table">
+            <thead>
+                <tr>
+                    <th>#</th>
+                    <th>Hora</th>
+                    <th>Dir</th>
+                    <th>TID</th>
+                    <th>FC</th>
+                    <th>Registrador</th>
+                    <th>Descrição</th>
+                    <th>HEX (ADU completo)</th>
+                </tr>
+            </thead>
+            <tbody>
+            {% for f in frames %}
+            <tr>
+                <td class="tid-cell">{{ loop.index }}</td>
+                <td style="white-space:nowrap;font-size:0.75rem;color:var(--cor-texto-secundario);">{{ f.timestamp }}</td>
+                <td><span class="dir-badge {{ f.direction }}">{{ f.direction }}</span></td>
+                <td class="tid-cell">{{ "0x%04X"|format(f.transaction_id) }}</td>
+                <td>
+                    <span class="fc-badge">
+                        {% if f.function_code == 3 %}FC03 Read
+                        {% elif f.function_code == 6 %}FC06 Write
+                        {% elif f.function_code == 16 %}FC16 Multi
+                        {% else %}FC{{ "%02d"|format(f.function_code) }}
+                        {% endif %}
+                    </span>
+                </td>
+                <td class="reg-cell">{{ f.register_addr }}</td>
+                <td style="max-width:340px;font-size:0.78rem;">{{ f.description }}</td>
+                <td class="hex-cell">{{ f.to_hex() }}</td>
+            </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+        </div>
+        {% else %}
+        <div style="padding:32px;text-align:center;color:var(--cor-texto-secundario);">
+            Nenhum frame registrado. Inicie uma sessão no dashboard para ver o protocolo Modbus em ação.
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- Referência de registradores -->
+    {% if reg_snapshot %}
+    <div class="log-card" style="margin-top:20px;">
+        <div class="log-card-header">
+            <span>Estado atual dos registradores (espelho interno)</span>
+        </div>
+        <div style="padding:16px 20px;display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:10px;">
+            {% set reg_names = {10017:"Charging Status",10015:"Charging Power",10016:"Session Energy",10029:"Max Power Limit",10025:"Dyn Load Mgmt",10060:"Charge Control",10026:"Breaker Current"} %}
+            {% for addr, val in reg_snapshot.items() %}
+            <div style="background:var(--cor-fundo);border-radius:8px;padding:10px 12px;border:1px solid var(--cor-borda);font-family:monospace;font-size:0.78rem;">
+                <div style="color:var(--cor-texto-secundario);font-size:0.7rem;">Reg {{ addr }}</div>
+                <div style="font-weight:600;color:var(--cor-texto);">{{ reg_names.get(addr, "Reserved") }}</div>
+                <div style="color:var(--cor-primaria);font-weight:700;">0x{{ "%04X"|format(val) }}</div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+
+</main>
+{% endblock %}

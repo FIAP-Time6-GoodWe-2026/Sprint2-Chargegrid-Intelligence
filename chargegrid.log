@@ -1,0 +1,102 @@
+2026-06-08 21:14:27,014 [INFO] session_manager: SessionManager inicializado com 15 carregadores.
+2026-06-08 21:14:27,015 [INFO] power_manager: PowerManager inicializado | Limite: 33.0 kW | Limiar throttle: 100%
+2026-06-08 21:14:27,015 [INFO] power_manager: PowerManager inicializado | Limite: 33.0 kW | Limiar throttle: 100%
+2026-06-08 21:14:27,016 [INFO] power_manager: PowerManager inicializado | Limite: 33.0 kW | Limiar throttle: 100%
+2026-06-08 21:14:27,019 [INFO] session_manager: Sessão criada: CGI-354E1123 | Carregador: P3-C1 | Veículo: OLF8G15 | Usuário: Patrick (P)
+2026-06-08 21:14:27,019 [INFO] power_manager: Alocação: ✅ Potência integral concedida: 11.0 kW (carga total: 11.0/33.0 kW — 33.3%)
+2026-06-08 21:14:27,019 [INFO] session_manager: Carregamento iniciado: CGI-354E1123 | 11.0 kW | R$ 1.8000/kWh
+2026-06-08 21:14:27,020 [INFO] session_manager: Sessão criada: CGI-88FE42F1 | Carregador: P3-C2 | Veículo: LXX4M95 | Usuário: Carolina (P)
+2026-06-08 21:14:27,020 [INFO] power_manager: Alocação: ✅ Potência integral concedida: 11.0 kW (carga total: 22.0/33.0 kW — 66.7%)
+2026-06-08 21:14:27,020 [INFO] session_manager: Carregamento iniciado: CGI-88FE42F1 | 11.0 kW | R$ 1.8000/kWh
+2026-06-08 21:14:27,020 [INFO] session_manager: Sessão criada: CGI-8692001A | Carregador: P3-C3 | Veículo: SKE0O31 | Usuário: Felipe (C)
+2026-06-08 21:14:27,020 [INFO] power_manager: Alocação: ✅ Potência integral concedida: 11.0 kW (carga total: 33.0/33.0 kW — 100.0%)
+2026-06-08 21:14:27,021 [INFO] session_manager: Carregamento iniciado: CGI-8692001A | 11.0 kW | R$ 1.6200/kWh
+2026-06-08 21:14:27,021 [INFO] session_manager: Sessão criada: CGI-F0296679 | Carregador: P3-C4 | Veículo: HAD8J32 | Usuário: Henrique (P)
+2026-06-08 21:14:27,021 [WARNING] session_manager: Throttle aplicado: CGI-354E1123 | 11.0 kW → 8.1 kW
+2026-06-08 21:14:27,021 [WARNING] session_manager: Throttle aplicado: CGI-88FE42F1 | 11.0 kW → 8.1 kW
+2026-06-08 21:14:27,022 [WARNING] session_manager: Throttle aplicado: CGI-8692001A | 11.0 kW → 8.8 kW
+2026-06-08 21:14:27,022 [INFO] power_manager: Alocação: 🔴 Limite excedido — redistribuição automática por prioridade: 3 sessão(ões) reajustadas (nova sessão recebe 8.1 kW) | carga final: 33.0/33.0 kW (100.0%)
+2026-06-08 21:14:27,022 [INFO] session_manager: Carregamento iniciado: CGI-F0296679 | 8.1 kW | R$ 2.3400/kWh
+2026-06-08 21:14:27,022 [WARNING] session_manager: Throttle aplicado: CGI-F0296679 | 8.1 kW → 8.1 kW
+2026-06-08 21:14:27,023 [INFO] session_manager: Sessão criada: CGI-E48A6F5D | Carregador: P3-C5 | Veículo: WMQ0U56 | Usuário: Yan (A)
+2026-06-08 21:14:27,024 [WARNING] session_manager: Throttle aplicado: CGI-354E1123 | 8.1 kW → 6.2 kW
+2026-06-08 21:14:27,025 [WARNING] session_manager: Throttle aplicado: CGI-88FE42F1 | 8.1 kW → 6.2 kW
+2026-06-08 21:14:27,025 [WARNING] session_manager: Throttle aplicado: CGI-8692001A | 8.8 kW → 6.8 kW
+2026-06-08 21:14:27,026 [WARNING] session_manager: Throttle aplicado: CGI-F0296679 | 8.1 kW → 6.2 kW
+2026-06-08 21:14:27,026 [INFO] power_manager: Alocação: 🔴 Limite excedido — redistribuição automática por prioridade: 4 sessão(ões) reajustadas (nova sessão recebe 7.5 kW) | carga final: 33.0/33.0 kW (100.0%)
+2026-06-08 21:14:27,026 [INFO] session_manager: Carregamento iniciado: CGI-E48A6F5D | 7.5 kW | R$ 1.9890/kWh
+2026-06-08 21:14:27,027 [WARNING] session_manager: Throttle aplicado: CGI-E48A6F5D | 7.5 kW → 7.5 kW
+2026-06-08 21:14:27,027 [INFO] session_manager: Sessão criada: CGI-5FED57D7 | Carregador: P1-C1 | Veículo: KHT0D34 | Usuário: Damaceno (P)
+2026-06-08 21:14:27,027 [INFO] power_manager: Alocação: ✅ Potência integral concedida: 11.0 kW (carga total: 11.0/33.0 kW — 33.3%)
+2026-06-08 21:14:27,028 [INFO] session_manager: Carregamento iniciado: CGI-5FED57D7 | 11.0 kW | R$ 1.8000/kWh
+2026-06-08 21:14:27,028 [INFO] session_manager: Sessão criada: CGI-26B8210C | Carregador: P1-C2 | Veículo: MFP6Z10 | Usuário: Caio (P)
+2026-06-08 21:14:27,028 [INFO] power_manager: Alocação: ✅ Potência integral concedida: 11.0 kW (carga total: 22.0/33.0 kW — 66.7%)
+2026-06-08 21:14:27,029 [INFO] session_manager: Carregamento iniciado: CGI-26B8210C | 11.0 kW | R$ 1.8000/kWh
+2026-06-08 21:14:27,029 [INFO] session_manager: Sessão criada: CGI-6B928C8D | Carregador: P1-C3 | Veículo: GJH0R64 | Usuário: Allan (C)
+2026-06-08 21:14:27,029 [INFO] power_manager: Alocação: ✅ Potência integral concedida: 11.0 kW (carga total: 33.0/33.0 kW — 100.0%)
+2026-06-08 21:14:27,030 [INFO] session_manager: Carregamento iniciado: CGI-6B928C8D | 11.0 kW | R$ 1.6200/kWh
+2026-06-08 21:14:27,030 [INFO] session_manager: Sessão criada: CGI-10961F39 | Carregador: P1-C4 | Veículo: FYX4G58 | Usuário: Amanda (A)
+2026-06-08 21:14:27,031 [WARNING] session_manager: Throttle aplicado: CGI-5FED57D7 | 11.0 kW → 7.7 kW
+2026-06-08 21:14:27,032 [WARNING] session_manager: Throttle aplicado: CGI-26B8210C | 11.0 kW → 7.7 kW
+2026-06-08 21:14:27,032 [WARNING] session_manager: Throttle aplicado: CGI-6B928C8D | 11.0 kW → 8.4 kW
+2026-06-08 21:14:27,033 [INFO] power_manager: Alocação: 🔴 Limite excedido — redistribuição automática por prioridade: 3 sessão(ões) reajustadas (nova sessão recebe 9.2 kW) | carga final: 33.0/33.0 kW (100.0%)
+2026-06-08 21:14:27,034 [INFO] session_manager: Carregamento iniciado: CGI-10961F39 | 9.2 kW | R$ 1.9890/kWh
+2026-06-08 21:14:27,034 [WARNING] session_manager: Throttle aplicado: CGI-10961F39 | 9.2 kW → 9.2 kW
+2026-06-08 21:14:27,035 [INFO] __main__: Seed de demonstração aplicado: 9 sessões ativas.
+2026-06-08 21:14:28,554 [INFO] werkzeug: [31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on all addresses (0.0.0.0)
+ * Running on http://127.0.0.1:5001
+ * Running on http://172.21.14.255:5001
+2026-06-08 21:14:28,555 [INFO] werkzeug: [33mPress CTRL+C to quit[0m
+2026-06-08 21:14:28,567 [INFO] werkzeug:  * Restarting with stat
+2026-06-08 21:14:29,884 [INFO] session_manager: SessionManager inicializado com 15 carregadores.
+2026-06-08 21:14:29,885 [INFO] power_manager: PowerManager inicializado | Limite: 33.0 kW | Limiar throttle: 100%
+2026-06-08 21:14:29,885 [INFO] power_manager: PowerManager inicializado | Limite: 33.0 kW | Limiar throttle: 100%
+2026-06-08 21:14:29,885 [INFO] power_manager: PowerManager inicializado | Limite: 33.0 kW | Limiar throttle: 100%
+2026-06-08 21:14:29,888 [INFO] session_manager: Sessão criada: CGI-294E0308 | Carregador: P3-C1 | Veículo: AMW1F49 | Usuário: Patrick (P)
+2026-06-08 21:14:29,888 [INFO] power_manager: Alocação: ✅ Potência integral concedida: 11.0 kW (carga total: 11.0/33.0 kW — 33.3%)
+2026-06-08 21:14:29,888 [INFO] session_manager: Carregamento iniciado: CGI-294E0308 | 11.0 kW | R$ 1.8000/kWh
+2026-06-08 21:14:29,889 [INFO] session_manager: Sessão criada: CGI-093C0604 | Carregador: P3-C2 | Veículo: DSW0P51 | Usuário: Carolina (P)
+2026-06-08 21:14:29,889 [INFO] power_manager: Alocação: ✅ Potência integral concedida: 11.0 kW (carga total: 22.0/33.0 kW — 66.7%)
+2026-06-08 21:14:29,889 [INFO] session_manager: Carregamento iniciado: CGI-093C0604 | 11.0 kW | R$ 1.8000/kWh
+2026-06-08 21:14:29,889 [INFO] session_manager: Sessão criada: CGI-79A4EAA5 | Carregador: P3-C3 | Veículo: NZF2Q88 | Usuário: Felipe (C)
+2026-06-08 21:14:29,890 [INFO] power_manager: Alocação: ✅ Potência integral concedida: 11.0 kW (carga total: 33.0/33.0 kW — 100.0%)
+2026-06-08 21:14:29,890 [INFO] session_manager: Carregamento iniciado: CGI-79A4EAA5 | 11.0 kW | R$ 1.6200/kWh
+2026-06-08 21:14:29,890 [INFO] session_manager: Sessão criada: CGI-2AD44386 | Carregador: P3-C4 | Veículo: ETV9D67 | Usuário: Henrique (P)
+2026-06-08 21:14:29,890 [WARNING] session_manager: Throttle aplicado: CGI-294E0308 | 11.0 kW → 8.1 kW
+2026-06-08 21:14:29,891 [WARNING] session_manager: Throttle aplicado: CGI-093C0604 | 11.0 kW → 8.1 kW
+2026-06-08 21:14:29,891 [WARNING] session_manager: Throttle aplicado: CGI-79A4EAA5 | 11.0 kW → 8.8 kW
+2026-06-08 21:14:29,891 [INFO] power_manager: Alocação: 🔴 Limite excedido — redistribuição automática por prioridade: 3 sessão(ões) reajustadas (nova sessão recebe 8.1 kW) | carga final: 33.0/33.0 kW (100.0%)
+2026-06-08 21:14:29,891 [INFO] session_manager: Carregamento iniciado: CGI-2AD44386 | 8.1 kW | R$ 2.3400/kWh
+2026-06-08 21:14:29,891 [WARNING] session_manager: Throttle aplicado: CGI-2AD44386 | 8.1 kW → 8.1 kW
+2026-06-08 21:14:29,892 [INFO] session_manager: Sessão criada: CGI-6761481A | Carregador: P3-C5 | Veículo: UCV8V58 | Usuário: Yan (A)
+2026-06-08 21:14:29,892 [WARNING] session_manager: Throttle aplicado: CGI-294E0308 | 8.1 kW → 6.2 kW
+2026-06-08 21:14:29,892 [WARNING] session_manager: Throttle aplicado: CGI-093C0604 | 8.1 kW → 6.2 kW
+2026-06-08 21:14:29,892 [WARNING] session_manager: Throttle aplicado: CGI-79A4EAA5 | 8.8 kW → 6.8 kW
+2026-06-08 21:14:29,893 [WARNING] session_manager: Throttle aplicado: CGI-2AD44386 | 8.1 kW → 6.2 kW
+2026-06-08 21:14:29,893 [INFO] power_manager: Alocação: 🔴 Limite excedido — redistribuição automática por prioridade: 4 sessão(ões) reajustadas (nova sessão recebe 7.5 kW) | carga final: 33.0/33.0 kW (100.0%)
+2026-06-08 21:14:29,893 [INFO] session_manager: Carregamento iniciado: CGI-6761481A | 7.5 kW | R$ 1.9890/kWh
+2026-06-08 21:14:29,893 [WARNING] session_manager: Throttle aplicado: CGI-6761481A | 7.5 kW → 7.5 kW
+2026-06-08 21:14:29,894 [INFO] session_manager: Sessão criada: CGI-DC44F464 | Carregador: P1-C1 | Veículo: EBG0C15 | Usuário: Damaceno (P)
+2026-06-08 21:14:29,894 [INFO] power_manager: Alocação: ✅ Potência integral concedida: 11.0 kW (carga total: 11.0/33.0 kW — 33.3%)
+2026-06-08 21:14:29,894 [INFO] session_manager: Carregamento iniciado: CGI-DC44F464 | 11.0 kW | R$ 1.8000/kWh
+2026-06-08 21:14:29,894 [INFO] session_manager: Sessão criada: CGI-2FB7AF7A | Carregador: P1-C2 | Veículo: TKK8P82 | Usuário: Caio (P)
+2026-06-08 21:14:29,895 [INFO] power_manager: Alocação: ✅ Potência integral concedida: 11.0 kW (carga total: 22.0/33.0 kW — 66.7%)
+2026-06-08 21:14:29,895 [INFO] session_manager: Carregamento iniciado: CGI-2FB7AF7A | 11.0 kW | R$ 1.8000/kWh
+2026-06-08 21:14:29,895 [INFO] session_manager: Sessão criada: CGI-86E70B8D | Carregador: P1-C3 | Veículo: VCR5N58 | Usuário: Allan (C)
+2026-06-08 21:14:29,895 [INFO] power_manager: Alocação: ✅ Potência integral concedida: 11.0 kW (carga total: 33.0/33.0 kW — 100.0%)
+2026-06-08 21:14:29,896 [INFO] session_manager: Carregamento iniciado: CGI-86E70B8D | 11.0 kW | R$ 1.6200/kWh
+2026-06-08 21:14:29,896 [INFO] session_manager: Sessão criada: CGI-F293B542 | Carregador: P1-C4 | Veículo: WQL0X39 | Usuário: Amanda (A)
+2026-06-08 21:14:29,896 [WARNING] session_manager: Throttle aplicado: CGI-DC44F464 | 11.0 kW → 7.7 kW
+2026-06-08 21:14:29,896 [WARNING] session_manager: Throttle aplicado: CGI-2FB7AF7A | 11.0 kW → 7.7 kW
+2026-06-08 21:14:29,897 [WARNING] session_manager: Throttle aplicado: CGI-86E70B8D | 11.0 kW → 8.4 kW
+2026-06-08 21:14:29,897 [INFO] power_manager: Alocação: 🔴 Limite excedido — redistribuição automática por prioridade: 3 sessão(ões) reajustadas (nova sessão recebe 9.2 kW) | carga final: 33.0/33.0 kW (100.0%)
+2026-06-08 21:14:29,897 [INFO] session_manager: Carregamento iniciado: CGI-F293B542 | 9.2 kW | R$ 1.9890/kWh
+2026-06-08 21:14:29,897 [WARNING] session_manager: Throttle aplicado: CGI-F293B542 | 9.2 kW → 9.2 kW
+2026-06-08 21:14:29,897 [INFO] __main__: Seed de demonstração aplicado: 9 sessões ativas.
+2026-06-08 21:14:30,030 [WARNING] werkzeug:  * Debugger is active!
+2026-06-08 21:14:30,038 [INFO] werkzeug:  * Debugger PIN: 786-612-685
+2026-06-08 21:14:46,473 [INFO] werkzeug: 127.0.0.1 - - [08/Jun/2026 21:14:46] "GET / HTTP/1.1" 200 -
+2026-06-08 21:14:52,216 [INFO] werkzeug: 127.0.0.1 - - [08/Jun/2026 21:14:52] "GET /posto/P2 HTTP/1.1" 200 -
+2026-06-08 21:22:36,575 [INFO] werkzeug: 127.0.0.1 - - [08/Jun/2026 21:22:36] "GET /posto/P2/carregador/C4 HTTP/1.1" 200 -
+2026-06-08 21:22:40,581 [INFO] werkzeug: 127.0.0.1 - - [08/Jun/2026 21:22:40] "GET /posto/P2 HTTP/1.1" 200 -
